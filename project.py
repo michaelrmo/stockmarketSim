@@ -1,11 +1,14 @@
 #Stock Market Simulator
 #imports
 import sqlite3
+import sys
 # import someAPI
 
 def main():
     # Call load function
-    load()
+    balance, stockArray = load()
+
+    print(balance, stockArray)
 
     pass
 
@@ -13,7 +16,9 @@ def main():
 def load():
     #Define classes
 
-    class stock:
+    stockArr = []
+
+    class stock():
         def __init__(self, symbol, shares):
             self.__symbol = symbol
             self.__shares = shares
@@ -39,8 +44,6 @@ def load():
         def getTotal(self):
             totalVal = self.__shares * self.getPrice(self)
             return totalVal
-        
-    
         
     # Make connection to data base and then then check if there is any sort of data
     try:
@@ -77,25 +80,31 @@ def load():
 
                 # Create text file to seperately store the balance as putting it in a database is too clumsy for one user
                 with open("balance.txt","w") as f:
-                    startBalance = 1000
-                    f.write(startBalance)
+                    balance = "1000"
+                    f.write(balance)
 
-                print(f"We have initialised your account, your starting balance is {startBalance}")
+                print(f"We have initialised your account, your starting balance is {balance}")
 
             else:
-                cur
+                
+                #Read in data from the data"base
+                for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
+                    print(row)
+                    stockArr.append(stock(row[0],row[1]))
 
+                #Load in balance
+                with open("balance.txt","r") as f:
+                    balance = int(f.read())
+                
 
-
-
+        return balance, stockArr
 
 
 
     except sqlite3.OperationalError as e:
         print("An error has occurred")
         print(e)
-        
-
+        sys.exit()
 
 if __name__ == "__main__":
     main()
