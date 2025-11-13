@@ -8,7 +8,10 @@ def main():
     # Call load function
     balance, stockArray = load()
 
-    print(balance, stockArray)
+    while True:
+        navigation()
+        
+        pass
 
     pass
 
@@ -89,22 +92,69 @@ def load():
                 
                 #Read in data from the data"base
                 for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
-                    print(row)
                     stockArr.append(stock(row[0],row[1]))
 
                 #Load in balance
                 with open("balance.txt","r") as f:
                     balance = int(f.read())
                 
+                print(f"Welcome back, your balance is {balance}")
 
         return balance, stockArr
-
-
 
     except sqlite3.OperationalError as e:
         print("An error has occurred")
         print(e)
         sys.exit()
+
+def buy():
+    #TODO
+    pass
+
+def sell():
+    #TODO
+    pass
+
+def search():
+    #TODO
+    pass
+
+def insert():
+    #TODO
+    pass
+
+def validate():
+    #TODO
+    pass
+
+def navigation():
+    options = {1 : search(),
+               2: buy()}
+    print("""
+              
+            1. Search
+            2. Buy
+            3. Sell
+            4. View portfolio
+            5. View transactions
+            6. Add to balance
+            7. Exit
+            
+              """)
+    
+    option = input("Enter an option")
+
+    if menuValidation(option,1):
+        pass
+
+
+
+def menuValidation(opt, menu):
+    match menu:
+        case 1:
+
+    
+
 
 if __name__ == "__main__":
     main()
