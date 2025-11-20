@@ -2,22 +2,30 @@
 #imports
 import sqlite3
 import sys
-# import someAPI
+import os
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockLatestTradeRequest
+from dotenv import load_dotenv
 
-def main():
-    # Call load function
-    balance, stockArray = load()
+#Global Vars
+load_dotenv()
+API_KEY = os.getenv("APCA_API_KEY_ID")
+SECRET_KEY = os.getenv("APCA_API_SECRET_KEY")
 
-    while True:
-        navigation()
-        
-        pass
+data_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
-    pass
+#FR 10
+def get_price(symbol):
+    #Getting the latest trade request for that stock
+    #And therefore getting current price
+    request = StockLatestTradeRequest(symbol_or_symbols=symbol)
+    response = data_client.get_stock_latest_trade(request)
+    
+    return response[symbol].price
 
-
+#FR 5
 def load():
-    #Define classes
+    #Define stock class
 
     stockArr = []
 
@@ -48,7 +56,7 @@ def load():
             totalVal = self.__shares * self.getPrice(self)
             return totalVal
         
-    # Make connection to data base and then then check if there is any sort of data
+    # Make connection to database and then then check if there is any sort of data
     try:
         # Connect to databse and set connection variable to con, using with so it closes autmatically
         with sqlite3.connect("finance.db") as con:
@@ -64,7 +72,7 @@ def load():
                 print("Welcome to the stock market simulator!")
 
                 # Creating Portfolio database to store stocks
-                cursor.execute("CREATE TABLE portfolio (" \
+                cursor.execute(f"CREATE TABLE {tableName} (" \
                 "stock_id INTEGER PRIMARY KEY AUTOINCREMENT," \
                 "symbol VARCHAR NOT NULL," \
                 "shares INTEGER NOT NULL);")
@@ -79,9 +87,11 @@ def load():
                 "shares INTEGER NOT NULL);")
 
                 #Create an index on the symbol field for faster lookup times
-                cursor.execute("CREATE UNIQUE INDEX symbol ON portfolio (symbol);")
+                cursor.execute(f"CREATE UNIQUE INDEX symbol ON {tableName} (symbol);")
 
                 # Create text file to seperately store the balance as putting it in a database is too clumsy for one user
+                
+                #FR 16
                 with open("balance.txt","w") as f:
                     balance = "1000"
                     f.write(balance)
@@ -95,6 +105,7 @@ def load():
                     stockArr.append(stock(row[0],row[1]))
 
                 #Load in balance
+                #FR16
                 with open("balance.txt","r") as f:
                     balance = int(f.read())
                 
@@ -107,51 +118,125 @@ def load():
         print(e)
         sys.exit()
 
-def buy():
-    #TODO
+def main():
+    
+    #FR 1
+    #Defining the portfolio class which will have all of the DB methods
+    # Basically forcing a functional program to be OOP
+    class portfolio():
+
+        def __init__(self, stocks):
+            self.__stocks = stocks
+
+        # Choosing which stock to buy, may remove later
+        def chooseStock():
+            #TODO
+            pass
+
+        #Buying a stock
+        def buy():
+            #TODO
+            pass
+
+        #Selling a stock
+        def sell():
+            #TODO
+            pass
+
+        #Searching for a stock
+        def search():
+            #TODO
+            pass
+
+        #Inserting info into database
+        def insert():
+            #TODO
+            pass
+
+        # Validating purchase
+        def validate():
+            #TODO
+            pass
+
+        #View portfolio
+        def viewPortfolio():
+            #TODO
+            pass
+
+        #Adding to balance
+        def addBal():
+            #TODO
+            pass
+
+        #View balance
+        def viewBal():
+            #TODO
+            pass
+
+        # View transaction history
+        def viewTrans():
+            #TODO
+            pass
+
+    # Call load function
+    balance, stockArray = load()
+    portf = portfolio(stockArray)
+    get_price("AAPL")
+
+    while True:
+        navigation(portf)
+        
+        break
+
     pass
 
-def sell():
-    #TODO
-    pass
-
-def search():
-    #TODO
-    pass
-
-def insert():
-    #TODO
-    pass
-
-def validate():
-    #TODO
-    pass
-
-def navigation():
-    options = {1 : search(),
-               2: buy()}
+# Displaying the options menu when needed
+def dispMenu():
     print("""
               
-            1. Search
+            1. Browse
             2. Buy
             3. Sell
             4. View portfolio
             5. View transactions
             6. Add to balance
-            7. Exit
+            7. View balance
+            8. Exit
             
               """)
+
+def validateMenu(option):
+
+    while option > 8 or option < 1:
+        print("Please enter a number from 1 to 8")
+        dispMenu()
+        try:
+            option = int(input("Enter an option"))
+        except:
+            print("Please enter a valid number")
+            option = 0
+
+    return option
+
+def navigation(assets):
+    options = {1 : assets.search(),
+               2: assets.chooseStock("buy"),
+               3: assets.chooseStock("sell"),
+               4: assets.viewPortfolio(),
+               5: assets.viewTrans(),
+               6: assets.addBal(),
+               7: assets.viewBal(),}
     
-    option = input("Enter an option")
-
-    if menuValidation(option,1):
-        pass
-
-
-
-def menuValidation(opt, menu):
-    match menu:
-        case 1:
+    dispMenu()
+    
+    try:
+        option = int(input("Enter an option"))
+    except:
+        print("Please enter a valid number")
+        option = 0
+    
+    option = validateMenu(option)
+    
 
     
 
