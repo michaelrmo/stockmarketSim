@@ -20,8 +20,14 @@ def get_price(symbol):
     #And therefore getting current price
     request = StockLatestTradeRequest(symbol_or_symbols=symbol)
     response = data_client.get_stock_latest_trade(request)
+
+    #If its a list loop through the list items and add the price of each to a list
+    if type(symbol) is list:
+        return [response[thing].price for thing in symbol]
     
-    return response[symbol].price
+    #If its one stock then just return that stock price as a float
+    else:
+        return response[symbol].price
 
 #FR 5
 def load():
@@ -181,14 +187,10 @@ def main():
     # Call load function
     balance, stockArray = load()
     portf = portfolio(stockArray)
-    get_price("AAPL")
+    print("reached")
+    print(get_price(["AAPL","MSFT"]))
 
-    while True:
-        navigation(portf)
-        
-        break
-
-    pass
+    
 
 # Displaying the options menu when needed
 def dispMenu():
