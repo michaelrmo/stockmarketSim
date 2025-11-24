@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 load_dotenv()
 API_KEY = os.getenv("APCA_API_KEY_ID")
 SECRET_KEY = os.getenv("APCA_API_SECRET_KEY")
-
 data_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
 #FR 10
+#Only 200 API calls per minute, may lead to issues potentially?
 def get_price(symbol):
     #Getting the latest trade request for that stock
     #And therefore getting current price
@@ -128,69 +128,113 @@ def main():
     
     #FR 1
     #Defining the portfolio class which will have all of the DB methods
-    # Basically forcing a functional program to be OOP
     class portfolio():
 
-        def __init__(self, stocks):
+        def __init__(self, stocks, balance):
             self.__stocks = stocks
+            self.__balance = balance
 
         # Choosing which stock to buy, may remove later
-        def chooseStock():
+        # Kind of like the UI for these things which will then call the buy or sell funcs
+        def chooseStock(self, opt):
             #TODO
             pass
 
-        #Buying a stock
-        def buy():
+        #Buying a stock logic
+        def buy(self):
             #TODO
             pass
 
-        #Selling a stock
-        def sell():
+        #Selling a stock logic
+        def sell(self):
             #TODO
             pass
 
         #Searching for a stock
-        def search():
+        def search(self):
             #TODO
             pass
 
         #Inserting info into database
-        def insert():
+        def insert(self):
             #TODO
             pass
 
         # Validating purchase
-        def validate():
+        def validate(self):
             #TODO
             pass
 
         #View portfolio
-        def viewPortfolio():
+        def viewPortfolio(self):
             #TODO
             pass
 
         #Adding to balance
-        def addBal():
+        def addBal(self):
             #TODO
             pass
 
         #View balance
-        def viewBal():
+        def viewBal(self):
             #TODO
             pass
 
         # View transaction history
-        def viewTrans():
+        def viewTrans(self):
+            #TODO
+            pass
+
+        #Binary search on the array of objects to check if I already own a stock
+        def checkStock(self):
             #TODO
             pass
 
     # Call load function
     balance, stockArray = load()
-    portf = portfolio(stockArray)
-    print("reached")
-    print(get_price(["AAPL","MSFT"]))
+    #Create a portfolio class variable
+    portf = portfolio(stockArray, balance)
 
-    
+    while True:
+        choice = navigation()
+
+        #Mapping the choice to an output
+        match choice:
+            case 1:
+                #BROWSE
+                #not quite sure what that will actually do yet
+                pass
+
+            case 2: 
+                #Going into the buy menu
+                portf.chooseStock("buy")
+            
+            case 3:
+                #Going into the sell menu
+                portf.chooseStock("sell")
+
+            case 4:
+                #Just viewing your portfolio
+                #Will probably have the function format the DB output in a table or sum
+                portf.viewTrans()
+
+            case 5:
+                #Viewing your transaction history
+                portf.viewTrans()
+            
+            case 6:
+                #Adding money to your balance
+                portf.addBal()
+            
+            case 7:
+                #Viewing balance
+                portf.viewBal()
+            
+            case 8:
+                #Exiting the program
+                sys.exit()
+
+
 
 # Displaying the options menu when needed
 def dispMenu():
@@ -213,35 +257,27 @@ def validateMenu(option):
         print("Please enter a number from 1 to 8")
         dispMenu()
         try:
-            option = int(input("Enter an option"))
+            option = int(input("Enter an option: "))
         except:
             print("Please enter a valid number")
             option = 0
 
     return option
 
-def navigation(assets):
-    options = {1 : assets.search(),
-               2: assets.chooseStock("buy"),
-               3: assets.chooseStock("sell"),
-               4: assets.viewPortfolio(),
-               5: assets.viewTrans(),
-               6: assets.addBal(),
-               7: assets.viewBal(),}
+def navigation():
     
     dispMenu()
     
     try:
-        option = int(input("Enter an option"))
+        option = int(input("Enter an option: "))
     except:
         print("Please enter a valid number")
         option = 0
     
     option = validateMenu(option)
-    
 
+    return option
     
-
 
 if __name__ == "__main__":
     main()
