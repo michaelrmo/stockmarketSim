@@ -18,16 +18,29 @@ data_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 def get_price(symbol):
     #Getting the latest trade request for that stock
     #And therefore getting current price
+
     request = StockLatestTradeRequest(symbol_or_symbols=symbol)
     response = data_client.get_stock_latest_trade(request)
 
     #If its a list loop through the list items and add the price of each to a list
     if type(symbol) is list:
-        return [response[thing].price for thing in symbol]
-    
+        try:
+            priceArr = [response[thing].price for thing in symbol]
+            return priceArr
+        #This shouldn't be reached technically?
+        # The list is only passed in when calculating total portfolio value
+        # And isnt triggered by the user
+        except:
+            print("Invalid stock symbol")
+            return None
     #If its one stock then just return that stock price as a float
     else:
-        return response[symbol].price
+        try:
+            stockPrice = response[symbol].price
+            return stockPrice
+        except:
+            print("Invalid stock symbol")
+            return None
 
 #FR 5
 def load():
@@ -134,34 +147,119 @@ def main():
             self.__stocks = stocks
             self.__balance = balance
 
-        # Choosing which stock to buy, may remove later
         # Kind of like the UI for these things which will then call the buy or sell funcs
+        #FR 7 ?
         def chooseStock(self, opt):
-            #TODO
-            pass
+            stock = input("Enter stock name: ")
+            num = input(f"Enter the number of stocks you'd like to {opt}")
+            num = self.validateNum(num, opt)
+
+            if opt == "sell":
+                self.sell(stock,num)
+            
+            elif opt == "buy":
+                self.but(stock,num)
+
+            else:
+                print("Incorrect function call")
+                sys.exit()
 
         #Buying a stock logic
-        def buy(self):
-            #TODO
-            pass
+        def buy(self, buyObj,num):
+            price = get_price(buyObj)
 
+            #If the stock doesnt exist break out of it
+            if price == None:
+                return
+            
+            #Checking the user has enough money
+            if not self.validatePurchase("buy", price, num):
+                print(f"{num} shares of {buyObj} costs {price * num}")
+                return
+            
+            #Checking the user wants to buy it for that much
+            if not self.confirmPurchase("buy", price, num, buyObj):
+                return
+            
+            #Balance logic, database stuff and array of ojects start now
+
+            #Update Balance
+            total = price * num
+            self.__balance = self.__balance - total
+            self.writeBal()
+
+            #Now time to check if the user already owns the stock
+            self.checkStock(buyObj)
+            
         #Selling a stock logic
-        def sell(self):
+        def sell(self, sellObj,num):
             #TODO
             pass
+            
+        def validateNum(self, num, option):
+            try:
+                num = int(num)
+            except:
+                print("Please enter a valid integer number")
+                num = 0
+            
+            while num < 1:
+                try:
+                    num = int(input(f"Enter the number of stocks you'd like to {option}"))
+                except:
+                    print("Please enter a valid integer number")
+                    num = 0
 
-        #Searching for a stock
-        def search(self):
-            #TODO
-            pass
+            return num
+
+        # Validating purchase
+        def validatePurchase(self, opt, price, num):
+            if opt == "buy":
+                if self.__balance < price * num:
+                    print("Insufficient cash balance")
+                    print(f"You have {self.__balance}")
+                    return False
+                else:
+                    return True
+            
+            elif opt == "sell":
+                pass
+
+            return
+        
+        #Just a user confirmation 
+        def confirmPurchase(self,opt,price,shareNum, obj):
+            yesOpt = ["","yes","y", "\n"]
+            noOpt = ["no","n"]
+            print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
+            option = input("Y/n")
+            option = self.validateOption(option, yesOpt, noOpt)
+
+            if option in noOpt:
+                print("Order cancelled")
+                return False
+            
+            elif option in yesOpt:
+                print("Transaction Confirmed")
+                return True
+            
+            else:
+                print("Error in purchase confirmation")
+                return False
+
+        def validateOption(self, choice, yesOpt, noOpt):
+            if choice == "" or choice == "\n":
+                return choice
+            
+            choice = choice.lower()
+            while choice not in yesOpt and choice not in noOpt:
+                print("Please enter a valid input")
+                choice = input("Y/n").lower()
+
+            return choice
 
         #Inserting info into database
         def insert(self):
-            #TODO
-            pass
-
-        # Validating purchase
-        def validate(self):
             #TODO
             pass
 
@@ -190,20 +288,30 @@ def main():
             #TODO
             pass
 
+        def writeBal(self):
+            with open("balance.txt","w") as f:
+                f.write(self.__balance)
+            return
+
     # Call load function
     balance, stockArray = load()
     #Create a portfolio class variable
+    get_price("test")
     portf = portfolio(stockArray, balance)
 
     while True:
+        #FR8
         choice = navigation()
+        print(choice)
 
         #Mapping the choice to an output
         match choice:
             case 1:
-                #BROWSE
+                #Check Stock Price
                 #not quite sure what that will actually do yet
-                pass
+                searchObj = input("Enter stock symbol: ")
+                price = get_price(searchObj)
+                print(f"{searchObj} is trading at {price} a share")
 
             case 2: 
                 #Going into the buy menu
@@ -235,12 +343,10 @@ def main():
                 sys.exit()
 
 
-
 # Displaying the options menu when needed
 def dispMenu():
-    print("""
-              
-            1. Browse
+    print("""  
+            1. Check Stock Price
             2. Buy
             3. Sell
             4. View portfolio
@@ -248,7 +354,6 @@ def dispMenu():
             6. Add to balance
             7. View balance
             8. Exit
-            
               """)
 
 def validateMenu(option):
