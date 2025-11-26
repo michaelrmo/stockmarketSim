@@ -91,6 +91,8 @@ def load():
                 print("Welcome to the stock market simulator!")
 
                 # Creating Portfolio database to store stocks
+                #Table name isn't a global var and if i change it here the functions in my portfolio object will break
+                #Flag this
                 cursor.execute(f"CREATE TABLE {tableName} (" \
                 "stock_id INTEGER PRIMARY KEY AUTOINCREMENT," \
                 "symbol VARCHAR NOT NULL," \
@@ -120,6 +122,7 @@ def load():
             else:
                 
                 #Read in data from the data"base
+                #The order by is to ensure the stocks are in alphabetical order
                 for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
                     stockArr.append(stock(row[0],row[1]))
 
@@ -189,7 +192,18 @@ def main():
             self.writeBal()
 
             #Now time to check if the user already owns the stock
-            self.checkStock(buyObj)
+            #Binary Search call
+            owned = self.checkStock(buyObj)
+
+            #Stock isnt owned
+            if owned != -1:
+                self.newStock(buyObj, num)
+            #Stock is owned
+            else:
+                self.addStock(owned,buyObj,num)
+
+            print(f"Successfully purchased {num} shares of {buyObj}")
+            return
             
         #Selling a stock logic
         def sell(self, sellObj,num):
@@ -284,14 +298,65 @@ def main():
             pass
 
         #Binary search on the array of objects to check if I already own a stock
-        def checkStock(self):
-            #TODO
-            pass
+        #FR 3
+        def checkStock(self, searchObj):
+            low = 0
+            high = len(self.__stocks) - 1
 
+            while low <= high:
+                #Getting difference between highest and lowest
+                #Then getting the mid point
+                #Adding it to the lowest value to establish a new midpoint
+                mid = low + ((high - low) // 2)
+
+                if self.__stocks[mid].getSymbol() < searchObj:
+                    low = mid + 1
+                elif self.__stocks[mid].getSymbol() > searchObj:
+                    high = mid - 1
+                else:
+                    return mid
+            return -1
+
+        #Writing balance to text file
+        #FR 15
         def writeBal(self):
             with open("balance.txt","w") as f:
                 f.write(self.__balance)
             return
+        
+        #Looping through stock array and will add stock in the right place
+        def stockArrAdd(self,stockName, stockNum):
+            #TODO
+            pass
+        
+        #Stocks need to be in alphabetical order 
+        #This function inserts them in such an order
+        #Also insert stock into database
+        def newStock(self, stockName, stockNum):
+            #Adding to array of objects
+            self.stockArrAdd(stockName,stockNum)
+
+            #Adding to database
+            with sqlite3.connect("finance.db") as con:
+
+                cursor = con.cursor()
+                #Insert statement
+                #I left off here
+                cursor.execute("INSERT INTO portfolio VALUES()")
+
+            pass
+
+        #If user already owns the stock then just add to the databasr
+        #Modify stock array to have the correct data
+        def addStock(self, stockIndex, stockName, stockNum):
+            #TODO
+            pass
+
+        #If the user sells all of a stock delete the object from the array of objects
+        #Also delete from database
+        def removeStock(self, stockName):
+            #TODO
+            pass
 
     # Call load function
     balance, stockArray = load()
