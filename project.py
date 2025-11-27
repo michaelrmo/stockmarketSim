@@ -13,14 +13,299 @@ API_KEY = os.getenv("APCA_API_KEY_ID")
 SECRET_KEY = os.getenv("APCA_API_SECRET_KEY")
 data_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
+#Clasess
+#Define stock class
+class stock():
+        def __init__(self, symbol, shares):
+            self.__symbol = symbol
+            self.__shares = shares
+        
+        #Getter and setter methods
+        #Don't need a setter method for the symbol as its defined when the class is created and never touched again
+        def getSymbol(self):
+            return self.__symbol
+            
+        def getShares(self):
+            return self.__shares
+        
+        def setShares(self, newVal):
+            self.__shares = newVal
+
+        #Other methods
+        #May remove later
+        #Flag this
+        def getPrice(self):
+            #Make the api call for the current price
+            pass
+
+        #May remove later
+        def getTotal(self):
+            totalVal = self.__shares * self.getPrice(self)
+            return totalVal
+
+#FR 1
+#Defining the portfolio class which will have all of the DB methods
+class portfolio():
+
+    def __init__(self, stocks, balance):
+        self.__stocks = stocks
+        self.__balance = balance
+
+    # Kind of like the UI for these things which will then call the buy or sell funcs
+    #FR 7 ?
+    def chooseStock(self, opt):
+        stock = input("Enter stock name: ")
+        num = input(f"Enter the number of stocks you'd like to {opt}")
+        num = self.validateNum(num, opt)
+
+        if opt == "sell":
+            self.sell(stock,num)
+        
+        elif opt == "buy":
+            self.but(stock,num)
+
+        else:
+            #May remove later
+            #Flag this
+            print("Incorrect function call")
+            sys.exit()
+
+    #Buying a stock logic
+    def buy(self, buyObj,num):
+        price = get_price(buyObj)
+
+        #If the stock doesnt exist break out of it
+        if price == None:
+            return
+        
+        #Checking the user has enough money
+        if not self.validatePurchase("buy", price, num):
+            print(f"{num} shares of {buyObj} costs {price * num}")
+            return
+        
+        #Checking the user wants to buy it for that much
+        if not self.confirmPurchase("buy", price, num, buyObj):
+            return
+        
+        #Balance logic, database stuff and array of ojects start now
+
+        #Update Balance
+        total = price * num
+        self.__balance = self.__balance - total
+        self.writeBal()
+
+        #Now time to check if the user already owns the stock
+        #Binary Search call
+        owned = self.checkStock(buyObj)
+
+        #Stock isnt owned
+        if owned != -1:
+            self.newStock(buyObj, num)
+        #Stock is owned
+        else:
+            self.addStock(owned,num)
+
+        print(f"Successfully purchased {num} shares of {buyObj}")
+        return
+        
+    #Selling a stock logic
+    def sell(self, sellObj,num):
+        #TODO
+        pass
+        
+    def validateNum(self, num, option):
+        try:
+            num = int(num)
+        except:
+            print("Please enter a valid integer number")
+            num = 0
+        
+        while num < 1:
+            try:
+                num = int(input(f"Enter the number of stocks you'd like to {option}"))
+            except:
+                print("Please enter a valid integer number")
+                num = 0
+
+        return num
+
+    # Validating purchase
+    def validatePurchase(self, opt, price, num):
+        if opt == "buy":
+            if self.__balance < price * num:
+                print("Insufficient cash balance")
+                print(f"You have {self.__balance}")
+                return False
+            else:
+                return True
+        
+        elif opt == "sell":
+            pass
+
+        return
+    
+    #Just a user confirmation 
+    def confirmPurchase(self,opt,price,shareNum, obj):
+        yesOpt = ["","yes","y", "\n"]
+        noOpt = ["no","n"]
+        print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
+        option = input("Y/n")
+        option = self.validateOption(option, yesOpt, noOpt)
+
+        if option in noOpt:
+            print("Order cancelled")
+            return False
+        
+        elif option in yesOpt:
+            print("Transaction Confirmed")
+            return True
+        
+        else:
+            print("Error in purchase confirmation")
+            return False
+
+    def validateOption(self, choice, yesOpt, noOpt):
+        if choice == "" or choice == "\n":
+            return choice
+        
+        choice = choice.lower()
+        while choice not in yesOpt and choice not in noOpt:
+            print("Please enter a valid input")
+            choice = input("Y/n").lower()
+
+        return choice
+
+    #View portfolio
+    def viewPortfolio(self):
+        #TODO
+        pass
+
+    #Adding to balance
+    def addBal(self):
+        #TODO
+        pass
+
+    #View balance
+    def viewBal(self):
+        #TODO
+        pass
+
+    # View transaction history
+    def viewTrans(self):
+        #TODO
+        pass
+
+    #Binary search on the array of objects to check if I already own a stock
+    #FR 3
+    def checkStock(self, searchObj):
+        low = 0
+        high = len(self.__stocks) - 1
+
+        while low <= high:
+            #Getting difference between highest and lowest
+            #Then getting the mid point
+            #Adding it to the lowest value to establish a new midpoint
+            mid = low + ((high - low) // 2)
+
+            if self.__stocks[mid].getSymbol() < searchObj:
+                low = mid + 1
+            elif self.__stocks[mid].getSymbol() > searchObj:
+                high = mid - 1
+            else:
+                return mid
+        return -1
+
+    #Writing balance to text file
+    #FR 15
+    def writeBal(self):
+        with open("balance.txt","w") as f:
+            f.write(self.__balance)
+        return
+    
+    #Looping through stock array and will add stock in the right place
+    #They need to be in alphabetical order
+    def stockArrAdd(self,stockName, stockNum):
+        #If users owns no stock
+        if len(self.__stocks) == 0:
+            self.__stocks.append(stock(stockName,stockNum))
+            return
+        
+        #Loop through the stock array and compare
+        for i, asset in enumerate(self.__stocks):
+            curStock = asset.getSymbol()
+
+            #If the current stock symbol is alphabetically higher then put the current stock symbol
+            #In its place and shift the rest of the array to the right
+            if stockName < curStock:
+                self.__stocks.insert(i,stock(stockName,stockNum))
+                return
+            
+            #Handling edge case for the stock being the lowest down in the alphabet
+            if i == (len(self.__stocks) - 1):
+                self.__stocks.append(stock(stockName, stockNum))
+                return
+
+        print("stockArrAdd function isnt working as intended")
+        return
+ 
+    #Stocks need to be in alphabetical order 
+    #This function inserts them in such an order
+    #Also insert stock into database
+    def newStock(self, stockName, stockNum):
+        #Adding to array of objects
+        self.stockArrAdd(stockName,stockNum)
+
+        #Adding to database
+        with sqlite3.connect("finance.db") as con:
+
+            cursor = con.cursor()
+            cursor.execute("INSERT INTO portfolio (symbol,shares) VALUES(?,?)", (stockName,stockNum,))
+
+        return
+
+    #If user already owns the stock then just add to the databasr
+    #Modify stock array to have the correct data
+    def addStock(self, stockIndex, stockNum):
+        #Getting the stock object
+        existingStock = self.__stocks[stockIndex]
+        oldShares = existingStock.getShares()
+        newShares = oldShares + stockNum
+        existingStock.setShares(newShares)
+        return
+
+    #If the user sells all of a stock delete the object from the array of objects
+    #Also delete from database
+    def removeStock(self, stockName):
+        #TODO
+        pass
+
+    #Get value of whole portfolio
+    def totalVal(self):
+        #TODO
+        pass
+
+#Taken from stackoverflow
+#Flag this
+def has_numbers(inputString):
+    return any(char.isdigit() for char in inputString)
+
 #FR 10
 #Only 200 API calls per minute, may lead to issues potentially?
 def get_price(symbol):
+    
+    if not has_numbers(symbol):
+        try:
+            symbol = symbol.upper()
+        except:
+            print("Error in capatlising symbol")
     #Getting the latest trade request for that stock
     #And therefore getting current price
-
-    request = StockLatestTradeRequest(symbol_or_symbols=symbol)
-    response = data_client.get_stock_latest_trade(request)
+    try:
+        request = StockLatestTradeRequest(symbol_or_symbols=symbol)
+        response = data_client.get_stock_latest_trade(request)
+    except:
+        print("Invalid Symbol")
+        return
 
     #If its a list loop through the list items and add the price of each to a list
     if type(symbol) is list:
@@ -44,36 +329,7 @@ def get_price(symbol):
 
 #FR 5
 def load():
-    #Define stock class
-
     stockArr = []
-
-    class stock():
-        def __init__(self, symbol, shares):
-            self.__symbol = symbol
-            self.__shares = shares
-        
-        #Getter and setter methods
-        def getSymbol(self):
-            return self.__symbol
-        
-        def setSymbol(self, newVal):
-            self.__symbol = newVal
-            
-        def getShares(self):
-            return self.__shares
-        
-        def setShares(self, newVal):
-            self.__shares = newVal
-
-        #Other methods
-        def getPrice(self):
-            #Make the api call for the current price
-            pass
-
-        def getTotal(self):
-            totalVal = self.__shares * self.getPrice(self)
-            return totalVal
         
     # Make connection to database and then then check if there is any sort of data
     try:
@@ -95,16 +351,16 @@ def load():
                 #Flag this
                 cursor.execute(f"CREATE TABLE {tableName} (" \
                 "stock_id INTEGER PRIMARY KEY AUTOINCREMENT," \
-                "symbol VARCHAR NOT NULL," \
+                "symbol VARCHAR(10) NOT NULL," \
                 "shares INTEGER NOT NULL);")
 
                 #Creating Transaction history database
                 cursor.execute("CREATE TABLE transactions (" \
                 "sale_id INTEGER PRIMARY KEY AUTOINCREMENT," \
-                "symbol VARCHAR NOT NULL," \
+                "symbol VARCHAR(10) NOT NULL," \
                 "purchase_price REAL NOT NULL," \
-                "type VARCHAR NOT NULL CHECK (type IN ('BUY', 'SELL'))," \
-                "time VARCHAR NOT NULL," \
+                "type VARCHAR(5) NOT NULL CHECK (type IN ('BUY', 'SELL'))," \
+                "time VARCHAR(100) NOT NULL," \
                 "shares INTEGER NOT NULL);")
 
                 #Create an index on the symbol field for faster lookup times
@@ -132,6 +388,7 @@ def load():
                     balance = int(f.read())
                 
                 print(f"Welcome back, your balance is {balance}")
+                #Add a thing that gets total portfolio value 
 
         return balance, stockArr
 
@@ -141,233 +398,15 @@ def load():
         sys.exit()
 
 def main():
-    
-    #FR 1
-    #Defining the portfolio class which will have all of the DB methods
-    class portfolio():
-
-        def __init__(self, stocks, balance):
-            self.__stocks = stocks
-            self.__balance = balance
-
-        # Kind of like the UI for these things which will then call the buy or sell funcs
-        #FR 7 ?
-        def chooseStock(self, opt):
-            stock = input("Enter stock name: ")
-            num = input(f"Enter the number of stocks you'd like to {opt}")
-            num = self.validateNum(num, opt)
-
-            if opt == "sell":
-                self.sell(stock,num)
-            
-            elif opt == "buy":
-                self.but(stock,num)
-
-            else:
-                print("Incorrect function call")
-                sys.exit()
-
-        #Buying a stock logic
-        def buy(self, buyObj,num):
-            price = get_price(buyObj)
-
-            #If the stock doesnt exist break out of it
-            if price == None:
-                return
-            
-            #Checking the user has enough money
-            if not self.validatePurchase("buy", price, num):
-                print(f"{num} shares of {buyObj} costs {price * num}")
-                return
-            
-            #Checking the user wants to buy it for that much
-            if not self.confirmPurchase("buy", price, num, buyObj):
-                return
-            
-            #Balance logic, database stuff and array of ojects start now
-
-            #Update Balance
-            total = price * num
-            self.__balance = self.__balance - total
-            self.writeBal()
-
-            #Now time to check if the user already owns the stock
-            #Binary Search call
-            owned = self.checkStock(buyObj)
-
-            #Stock isnt owned
-            if owned != -1:
-                self.newStock(buyObj, num)
-            #Stock is owned
-            else:
-                self.addStock(owned,buyObj,num)
-
-            print(f"Successfully purchased {num} shares of {buyObj}")
-            return
-            
-        #Selling a stock logic
-        def sell(self, sellObj,num):
-            #TODO
-            pass
-            
-        def validateNum(self, num, option):
-            try:
-                num = int(num)
-            except:
-                print("Please enter a valid integer number")
-                num = 0
-            
-            while num < 1:
-                try:
-                    num = int(input(f"Enter the number of stocks you'd like to {option}"))
-                except:
-                    print("Please enter a valid integer number")
-                    num = 0
-
-            return num
-
-        # Validating purchase
-        def validatePurchase(self, opt, price, num):
-            if opt == "buy":
-                if self.__balance < price * num:
-                    print("Insufficient cash balance")
-                    print(f"You have {self.__balance}")
-                    return False
-                else:
-                    return True
-            
-            elif opt == "sell":
-                pass
-
-            return
-        
-        #Just a user confirmation 
-        def confirmPurchase(self,opt,price,shareNum, obj):
-            yesOpt = ["","yes","y", "\n"]
-            noOpt = ["no","n"]
-            print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
-            option = input("Y/n")
-            option = self.validateOption(option, yesOpt, noOpt)
-
-            if option in noOpt:
-                print("Order cancelled")
-                return False
-            
-            elif option in yesOpt:
-                print("Transaction Confirmed")
-                return True
-            
-            else:
-                print("Error in purchase confirmation")
-                return False
-
-        def validateOption(self, choice, yesOpt, noOpt):
-            if choice == "" or choice == "\n":
-                return choice
-            
-            choice = choice.lower()
-            while choice not in yesOpt and choice not in noOpt:
-                print("Please enter a valid input")
-                choice = input("Y/n").lower()
-
-            return choice
-
-        #Inserting info into database
-        def insert(self):
-            #TODO
-            pass
-
-        #View portfolio
-        def viewPortfolio(self):
-            #TODO
-            pass
-
-        #Adding to balance
-        def addBal(self):
-            #TODO
-            pass
-
-        #View balance
-        def viewBal(self):
-            #TODO
-            pass
-
-        # View transaction history
-        def viewTrans(self):
-            #TODO
-            pass
-
-        #Binary search on the array of objects to check if I already own a stock
-        #FR 3
-        def checkStock(self, searchObj):
-            low = 0
-            high = len(self.__stocks) - 1
-
-            while low <= high:
-                #Getting difference between highest and lowest
-                #Then getting the mid point
-                #Adding it to the lowest value to establish a new midpoint
-                mid = low + ((high - low) // 2)
-
-                if self.__stocks[mid].getSymbol() < searchObj:
-                    low = mid + 1
-                elif self.__stocks[mid].getSymbol() > searchObj:
-                    high = mid - 1
-                else:
-                    return mid
-            return -1
-
-        #Writing balance to text file
-        #FR 15
-        def writeBal(self):
-            with open("balance.txt","w") as f:
-                f.write(self.__balance)
-            return
-        
-        #Looping through stock array and will add stock in the right place
-        def stockArrAdd(self,stockName, stockNum):
-            #TODO
-            pass
-        
-        #Stocks need to be in alphabetical order 
-        #This function inserts them in such an order
-        #Also insert stock into database
-        def newStock(self, stockName, stockNum):
-            #Adding to array of objects
-            self.stockArrAdd(stockName,stockNum)
-
-            #Adding to database
-            with sqlite3.connect("finance.db") as con:
-
-                cursor = con.cursor()
-                #Insert statement
-                #I left off here
-                cursor.execute("INSERT INTO portfolio VALUES()")
-
-            pass
-
-        #If user already owns the stock then just add to the databasr
-        #Modify stock array to have the correct data
-        def addStock(self, stockIndex, stockName, stockNum):
-            #TODO
-            pass
-
-        #If the user sells all of a stock delete the object from the array of objects
-        #Also delete from database
-        def removeStock(self, stockName):
-            #TODO
-            pass
 
     # Call load function
     balance, stockArray = load()
     #Create a portfolio class variable
-    get_price("test")
     portf = portfolio(stockArray, balance)
 
     while True:
         #FR8
         choice = navigation()
-        print(choice)
 
         #Mapping the choice to an output
         match choice:
