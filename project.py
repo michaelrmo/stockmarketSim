@@ -45,6 +45,8 @@ class stock():
 
 #FR 1
 #Defining the portfolio class which will have all of the DB methods
+#Include all functions in uml class diagram
+#Just make the functions that arent methods private
 class portfolio():
 
     def __init__(self, stocks, balance):
@@ -54,15 +56,15 @@ class portfolio():
     # Kind of like the UI for these things which will then call the buy or sell funcs
     #FR 7 ?
     def chooseStock(self, opt):
-        stock = input("Enter stock name: ")
-        num = input(f"Enter the number of stocks you'd like to {opt}")
+        stock = input("Enter stock symbol: ")
+        num = input(f"Enter the number of stocks you'd like to {opt}: ")
         num = self.validateNum(num, opt)
 
         if opt == "sell":
             self.sell(stock,num)
         
         elif opt == "buy":
-            self.but(stock,num)
+            self.buy(stock,num)
 
         else:
             #May remove later
@@ -91,15 +93,15 @@ class portfolio():
 
         #Update Balance
         total = price * num
-        self.__balance = self.__balance - total
+        self.__balance = round(self.__balance - total, 2)
         self.writeBal()
 
         #Now time to check if the user already owns the stock
         #Binary Search call
         owned = self.checkStock(buyObj)
-
+        
         #Stock isnt owned
-        if owned != -1:
+        if owned == -1:
             self.newStock(buyObj, num)
         #Stock is owned
         else:
@@ -149,7 +151,8 @@ class portfolio():
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
         print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
-        option = input("Y/n")
+        print(f"Your balance is {self.__balance}")
+        option = input("Y/n: ")
         option = self.validateOption(option, yesOpt, noOpt)
 
         if option in noOpt:
@@ -219,7 +222,8 @@ class portfolio():
     #FR 15
     def writeBal(self):
         with open("balance.txt","w") as f:
-            f.write(self.__balance)
+            newBal = str(self.__balance)
+            f.write(newBal)
         return
     
     #Looping through stock array and will add stock in the right place
@@ -271,6 +275,9 @@ class portfolio():
         oldShares = existingStock.getShares()
         newShares = oldShares + stockNum
         existingStock.setShares(newShares)
+        print(existingStock.getShares())
+
+        #Add DB UPDATE Statement
         return
 
     #If the user sells all of a stock delete the object from the array of objects
@@ -335,7 +342,7 @@ def load():
     try:
         # Connect to databse and set connection variable to con, using with so it closes autmatically
         with sqlite3.connect("finance.db") as con:
-
+  
             tableName = "portfolio"
             cursor = con.cursor()
 
@@ -385,7 +392,7 @@ def load():
                 #Load in balance
                 #FR16
                 with open("balance.txt","r") as f:
-                    balance = int(f.read())
+                    balance = float(f.read())
                 
                 print(f"Welcome back, your balance is {balance}")
                 #Add a thing that gets total portfolio value 
@@ -486,7 +493,6 @@ def navigation():
     option = validateMenu(option)
 
     return option
-    
 
 if __name__ == "__main__":
     main()
