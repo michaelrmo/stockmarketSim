@@ -57,11 +57,12 @@ class portfolio():
     #FR 7 ?
     def chooseStock(self, opt):
         stock = input("Enter stock symbol: ").rstrip()
-        num = input(f"Enter the number of stocks you'd like to {opt}: ")
-        num = self.__validateNum(num, opt)
         cost = get_price(stock)
         if cost == None:
             return
+        
+        num = input(f"Enter the number of stocks you'd like to {opt}: ")
+        num = self.__validateNum(num, opt)
         
         stock = self.__sanitise(stock)
 
@@ -76,6 +77,13 @@ class portfolio():
             #Flag this
             print("Incorrect function call")
             sys.exit()
+
+        with sqlite3.connect("finance.db") as con:
+            cursor = con.cursor()
+            opt = opt.upper()
+            cursor.execute("INSERT INTO transactions (symbol, purchase_price, type, time, shares) VALUES (?,?,?,DATETIME(), ?);", (stock,cost,opt,num,))
+        
+        return
 
     #Buying a stock logic
     def __buy(self, buyObj, num, price):
