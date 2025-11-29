@@ -81,16 +81,15 @@ class portfolio():
             return
         
         #Checking the user has enough money
-        if not self.__validatePurchase("buy", num, price):
+        if not self.__validateOrder("buy", num, price):
             print(f"{num} shares of {buyObj} costs {price * num}")
             return
         
         #Checking the user wants to buy it for that much
-        if not self.__confirmPurchase("buy", price, num, buyObj):
+        if not self.__confirmOrder("buy", price, num, buyObj):
             return
         
         #Balance logic, database stuff and array of ojects start now
-
         #Update Balance
         total = price * num
         self.__balance = round(self.__balance - total, 2)
@@ -118,12 +117,12 @@ class portfolio():
             return
 
         #Checking if the user has enough stock
-        flag,index =  self.__validatePurchase("sell", num, sellObj):
+        flag,index =  self.__validateOrder("sell", num, sellObj)
         if not flag:
             return
 
         #Confirming the purchase
-        if not self.__confirmPurchase("sell", price, num, sellObj):
+        if not self.__confirmOrder("sell", price, num, sellObj):
             return
 
         #Balance logic and DB logic
@@ -132,7 +131,31 @@ class portfolio():
         self.__writeBal()
 
         ownedStock = self.__stocks[index].getShares()
+
+        #If the amount of stock they are trying to sell is less that all
+        #Change stock val and amend db entry
+        if num < ownedStock:
+            new = ownedStock - num
+            self.__stocks[index].setShares(new)
+
+            #Updating DB
+            with sqlite3.connect("finance.db") as con:
+
+                cursor = con.cursor()
+                cursor.execute("UPDATE portfolio SET shares = ? WHERE symbol = ?;", (new, sellObj,))
         
+        #If equal to stock owned
+        #Need to delete stock obj
+        #And delete databse entry
+        elif num == ownedStock:
+            self.__removeStock(sellObj, index)
+
+        #Flag this
+        else:
+            print("More stock than owned stock somehow?")
+        
+        return
+
     def __validateNum(self, num, option):
         try:
             num = int(num)
@@ -153,7 +176,7 @@ class portfolio():
     #Arg parameter changes based on whether the user is buying or selling
     # If buying it is the price
     # If selling it is the stock name
-    def __validatePurchase(self, opt, num, arg):
+    def __validateOrder(self, opt, num, arg):
         if opt == "buy":
             if self.__balance < arg * num:
                 print("Insufficient cash balance")
@@ -167,7 +190,7 @@ class portfolio():
             stockIndex = self.__checkStock(arg)
             if stockIndex == -1:
                 print("You don't own this stock")
-                return
+                return False
             stockOwned = self.__stocks[stockIndex].getShares()
 
             if num > stockOwned:
@@ -182,7 +205,7 @@ class portfolio():
             return
     
     #Just a user confirmation 
-    def __confirmPurchase(self,opt,price,shareNum, obj):
+    def __confirmOrder(self,opt,price,shareNum, obj):
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
         print(f"Confirm {opt} order for {shareNum} shares of {obj} for ${shareNum * price}?")
@@ -191,7 +214,7 @@ class portfolio():
         option = self.__validateOption(option, yesOpt, noOpt)
 
         if option in noOpt:
-            print("Order cancelled")
+            print("Order Cancelled")
             return False
         
         elif option in yesOpt:
@@ -293,7 +316,7 @@ class portfolio():
         #Adding to database
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
-            cursor.execute("INSERT INTO portfolio (symbol,shares) VALUES(?,?)", (stockName,stockNum,))
+            cursor.execute("INSERT INTO portfolio (symbol,shares) VALUES(?,?);", (stockName,stockNum,))
         return
 
     #If user already owns the stock then just add to the databasr
@@ -311,14 +334,21 @@ class portfolio():
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
             #Currently writing this on the train so I havent checked that this is how you actually write an uodate statement
-            cursor.execute("UPDATE portfolio SET shares = shares + ? WHERE symbol = ?", (stockNum, symb,))
+            cursor.execute("UPDATE portfolio SET shares = shares + ? WHERE symbol = ?;", (stockNum, symb,))
         return
 
     #If the user sells all of a stock delete the object from the array of objects
     #Also delete from database
-    def __removeStock(self, stockName):
-        #TODO
-        pass
+    def __removeStock(self, stockName, stockIndex):
+        #Deleting stock object at that point
+        del self.__stocks[stockIndex]
+
+        #Deleting from DB
+        with sqlite3.connect("finance.db") as con:
+            cursor = con.cursor
+            cursor.execute("DELETE FROM portfolio WHERE symbol = ?", (stockName, ))
+
+        return
 
     #Get value of whole portfolio
     def __totalVal(self):
@@ -333,19 +363,20 @@ def has_numbers(inputString):
 #FR 10
 #Only 200 API calls per minute, may lead to issues potentially?
 def get_price(symbol):
-    
     if not has_numbers(symbol):
         try:
             symbol = symbol.upper()
         except:
+            #Not returning because maybe it has numbers and is still valid
             print("Error in capatlising symbol")
+
     #Getting the latest trade request for that stock
     #And therefore getting current price
     try:
         request = StockLatestTradeRequest(symbol_or_symbols=symbol)
         response = data_client.get_stock_latest_trade(request)
     except:
-        print("Invalid Symbol")
+        print("Invalid stock symbol")
         return
 
     #If its a list loop through the list items and add the price of each to a list
