@@ -58,13 +58,14 @@ class portfolio():
     def chooseStock(self, opt):
         stock = input("Enter stock symbol: ")
         num = input(f"Enter the number of stocks you'd like to {opt}: ")
-        num = self.validateNum(num, opt)
+        num = self.__validateNum(num, opt)
+        cost = get_price(stock)
 
         if opt == "sell":
-            self.__sell(stock,num)
+            self.__sell(stock,num, cost)
         
         elif opt == "buy":
-            self.__buy(stock,num)
+            self.__buy(stock,num, cost)
 
         else:
             #May remove later
@@ -73,15 +74,14 @@ class portfolio():
             sys.exit()
 
     #Buying a stock logic
-    def __buy(self, buyObj,num):
-        price = get_price(buyObj)
+    def __buy(self, buyObj, num, price):
 
         #If the stock doesnt exist break out of it
         if price == None:
             return
         
         #Checking the user has enough money
-        if not self.__validatePurchase("buy", price, num):
+        if not self.__validatePurchase("buy", num, price):
             print(f"{num} shares of {buyObj} costs {price * num}")
             return
         
@@ -111,9 +111,27 @@ class portfolio():
         return
         
     #Selling a stock logic
-    def __sell(self, sellObj,num):
-        #TODO
-        pass
+    def __sell(self, sellObj, num, price):
+
+        #Checking if the stock exists
+        if price == None:
+            return
+
+        #Checking if the user has enough stock
+        flag,index =  self.__validatePurchase("sell", num, sellObj):
+        if not flag:
+            return
+
+        #Confirming the purchase
+        if not self.__confirmPurchase("sell", price, num, sellObj):
+            return
+
+        #Balance logic and DB logic
+        total = price * num
+        self.__balance = round(self.__balance + total, 2)
+        self.__writeBal()
+
+        ownedStock = self.__stocks[index].getShares()
         
     def __validateNum(self, num, option):
         try:
@@ -132,9 +150,12 @@ class portfolio():
         return num
 
     # Validating purchase
-    def __validatePurchase(self, opt, price, num):
+    #Arg parameter changes based on whether the user is buying or selling
+    # If buying it is the price
+    # If selling it is the stock name
+    def __validatePurchase(self, opt, num, arg):
         if opt == "buy":
-            if self.__balance < price * num:
+            if self.__balance < arg * num:
                 print("Insufficient cash balance")
                 print(f"You have {self.__balance}")
                 return False
@@ -142,15 +163,29 @@ class portfolio():
                 return True
         
         elif opt == "sell":
-            pass
+            #Search for stock
+            stockIndex = self.__checkStock(arg)
+            if stockIndex == -1:
+                print("You don't own this stock")
+                return
+            stockOwned = self.__stocks[stockIndex].getShares()
 
-        return
+            if num > stockOwned:
+                print(f"You own {stockOwned} stocks and are trying to sell {num}")
+                #Returning a second value because function is expecting two outputs
+                return False, -1
+            else:
+                return True, stockIndex
+
+        else:
+            print("No opt parameter passed to validate purchase")
+            return
     
     #Just a user confirmation 
     def __confirmPurchase(self,opt,price,shareNum, obj):
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
-        print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
+        print(f"Confirm {opt} order for {shareNum} shares of {obj} for ${shareNum * price}?")
         print(f"Your balance is {self.__balance}")
         option = input("Y/n: ")
         option = self.__validateOption(option, yesOpt, noOpt)
