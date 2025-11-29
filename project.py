@@ -56,10 +56,14 @@ class portfolio():
     # Kind of like the UI for these things which will then call the buy or sell funcs
     #FR 7 ?
     def chooseStock(self, opt):
-        stock = input("Enter stock symbol: ")
+        stock = input("Enter stock symbol: ").rstrip()
         num = input(f"Enter the number of stocks you'd like to {opt}: ")
         num = self.__validateNum(num, opt)
         cost = get_price(stock)
+        if cost == None:
+            return
+        
+        stock = self.__sanitise(stock)
 
         if opt == "sell":
             self.__sell(stock,num, cost)
@@ -75,10 +79,6 @@ class portfolio():
 
     #Buying a stock logic
     def __buy(self, buyObj, num, price):
-
-        #If the stock doesnt exist break out of it
-        if price == None:
-            return
         
         #Checking the user has enough money
         if not self.__validateOrder("buy", num, price):
@@ -106,31 +106,28 @@ class portfolio():
         else:
             self.__addStock(owned,num)
 
-        print(f"Successfully purchased {num} shares of {buyObj}")
+        print(f"Successfully purchased {num} share(s) of {buyObj} for {total}")
         return
         
     #Selling a stock logic
     def __sell(self, sellObj, num, price):
 
-        #Checking if the stock exists
-        if price == None:
-            return
-
         #Checking if the user has enough stock
-        flag,index =  self.__validateOrder("sell", num, sellObj)
+        flag,index = self.__validateOrder("sell", num, sellObj)
         if not flag:
             return
 
+        #Checking how much stock the user has
+        ownedStock = self.__stocks[index].getShares()
+
         #Confirming the purchase
-        if not self.__confirmOrder("sell", price, num, sellObj):
+        if not self.__confirmOrder("sell", price, num, sellObj, ownedStock):
             return
 
         #Balance logic and DB logic
         total = price * num
         self.__balance = round(self.__balance + total, 2)
         self.__writeBal()
-
-        ownedStock = self.__stocks[index].getShares()
 
         #If the amount of stock they are trying to sell is less that all
         #Change stock val and amend db entry
@@ -153,8 +150,24 @@ class portfolio():
         #Flag this
         else:
             print("More stock than owned stock somehow?")
+            return
+
+        print(f"Successfully sold {num} share(s) of {sellObj} for {total}")        
         
         return
+    
+    #normalising the stock input for database indexing
+    def __sanitise(self, val):
+        newVal = ""
+        for char in val:
+
+            if char.isdigit():
+                newVal += char
+            else:
+                char = char.upper()
+                newVal += char
+
+        return newVal
 
     def __validateNum(self, num, option):
         try:
@@ -165,7 +178,7 @@ class portfolio():
         
         while num < 1:
             try:
-                num = int(input(f"Enter the number of stocks you'd like to {option}"))
+                num = int(input(f"Enter the number of stocks you'd like to {option}: "))
             except:
                 print("Please enter a valid integer number")
                 num = 0
@@ -190,7 +203,7 @@ class portfolio():
             stockIndex = self.__checkStock(arg)
             if stockIndex == -1:
                 print("You don't own this stock")
-                return False
+                return False , None
             stockOwned = self.__stocks[stockIndex].getShares()
 
             if num > stockOwned:
@@ -205,11 +218,13 @@ class portfolio():
             return
     
     #Just a user confirmation 
-    def __confirmOrder(self,opt,price,shareNum, obj):
+    def __confirmOrder(self,opt,price,shareNum, obj, *arg):
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
         print(f"Confirm {opt} order for {shareNum} shares of {obj} for ${shareNum * price}?")
         print(f"Your balance is {self.__balance}")
+        if opt == "sell":
+            print(f"You own {arg[0]} shares of {obj}")
         option = input("Y/n: ")
         option = self.__validateOption(option, yesOpt, noOpt)
 
@@ -232,7 +247,7 @@ class portfolio():
         choice = choice.lower()
         while choice not in yesOpt and choice not in noOpt:
             print("Please enter a valid input")
-            choice = input("Y/n").lower()
+            choice = input("Y/n: ").lower()
 
         return choice
 
@@ -327,7 +342,6 @@ class portfolio():
         oldShares = existingStock.getShares()
         newShares = oldShares + stockNum
         existingStock.setShares(newShares)
-        print(existingStock.getShares())
         symb = existingStock.getSymbol()
 
         #Add DB UPDATE Statement
@@ -345,7 +359,7 @@ class portfolio():
 
         #Deleting from DB
         with sqlite3.connect("finance.db") as con:
-            cursor = con.cursor
+            cursor = con.cursor()
             cursor.execute("DELETE FROM portfolio WHERE symbol = ?", (stockName, ))
 
         return
@@ -377,7 +391,7 @@ def get_price(symbol):
         response = data_client.get_stock_latest_trade(request)
     except:
         print("Invalid stock symbol")
-        return
+        return None
 
     #If its a list loop through the list items and add the price of each to a list
     if type(symbol) is list:
