@@ -61,10 +61,10 @@ class portfolio():
         num = self.validateNum(num, opt)
 
         if opt == "sell":
-            self.sell(stock,num)
+            self.__sell(stock,num)
         
         elif opt == "buy":
-            self.buy(stock,num)
+            self.__buy(stock,num)
 
         else:
             #May remove later
@@ -73,7 +73,7 @@ class portfolio():
             sys.exit()
 
     #Buying a stock logic
-    def buy(self, buyObj,num):
+    def __buy(self, buyObj,num):
         price = get_price(buyObj)
 
         #If the stock doesnt exist break out of it
@@ -81,12 +81,12 @@ class portfolio():
             return
         
         #Checking the user has enough money
-        if not self.validatePurchase("buy", price, num):
+        if not self.__validatePurchase("buy", price, num):
             print(f"{num} shares of {buyObj} costs {price * num}")
             return
         
         #Checking the user wants to buy it for that much
-        if not self.confirmPurchase("buy", price, num, buyObj):
+        if not self.__confirmPurchase("buy", price, num, buyObj):
             return
         
         #Balance logic, database stuff and array of ojects start now
@@ -94,28 +94,28 @@ class portfolio():
         #Update Balance
         total = price * num
         self.__balance = round(self.__balance - total, 2)
-        self.writeBal()
+        self.__writeBal()
 
         #Now time to check if the user already owns the stock
         #Binary Search call
-        owned = self.checkStock(buyObj)
+        owned = self.__checkStock(buyObj)
         
         #Stock isnt owned
         if owned == -1:
-            self.newStock(buyObj, num)
+            self.__newStock(buyObj, num)
         #Stock is owned
         else:
-            self.addStock(owned,num)
+            self.__addStock(owned,num)
 
         print(f"Successfully purchased {num} shares of {buyObj}")
         return
         
     #Selling a stock logic
-    def sell(self, sellObj,num):
+    def __sell(self, sellObj,num):
         #TODO
         pass
         
-    def validateNum(self, num, option):
+    def __validateNum(self, num, option):
         try:
             num = int(num)
         except:
@@ -132,7 +132,7 @@ class portfolio():
         return num
 
     # Validating purchase
-    def validatePurchase(self, opt, price, num):
+    def __validatePurchase(self, opt, price, num):
         if opt == "buy":
             if self.__balance < price * num:
                 print("Insufficient cash balance")
@@ -147,13 +147,13 @@ class portfolio():
         return
     
     #Just a user confirmation 
-    def confirmPurchase(self,opt,price,shareNum, obj):
+    def __confirmPurchase(self,opt,price,shareNum, obj):
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
         print(f"Confirm {opt} order for {shareNum} shares of {obj} costing ${shareNum * price}?")
         print(f"Your balance is {self.__balance}")
         option = input("Y/n: ")
-        option = self.validateOption(option, yesOpt, noOpt)
+        option = self.__validateOption(option, yesOpt, noOpt)
 
         if option in noOpt:
             print("Order cancelled")
@@ -167,7 +167,7 @@ class portfolio():
             print("Error in purchase confirmation")
             return False
 
-    def validateOption(self, choice, yesOpt, noOpt):
+    def __validateOption(self, choice, yesOpt, noOpt):
         if choice == "" or choice == "\n":
             return choice
         
@@ -200,7 +200,7 @@ class portfolio():
 
     #Binary search on the array of objects to check if I already own a stock
     #FR 3
-    def checkStock(self, searchObj):
+    def __checkStock(self, searchObj):
         low = 0
         high = len(self.__stocks) - 1
 
@@ -220,7 +220,7 @@ class portfolio():
 
     #Writing balance to text file
     #FR 15
-    def writeBal(self):
+    def __writeBal(self):
         with open("balance.txt","w") as f:
             newBal = str(self.__balance)
             f.write(newBal)
@@ -228,7 +228,7 @@ class portfolio():
     
     #Looping through stock array and will add stock in the right place
     #They need to be in alphabetical order
-    def stockArrAdd(self,stockName, stockNum):
+    def __stockArrAdd(self,stockName, stockNum):
         #If users owns no stock
         if len(self.__stocks) == 0:
             self.__stocks.append(stock(stockName,stockNum))
@@ -244,50 +244,49 @@ class portfolio():
                 self.__stocks.insert(i,stock(stockName,stockNum))
                 return
             
-            #Handling edge case for the stock being the lowest down in the alphabet
-            if i == (len(self.__stocks) - 1):
-                self.__stocks.append(stock(stockName, stockNum))
-                return
-
-        print("stockArrAdd function isnt working as intended")
+        #Handling edge case for the stock being the lowest down in the alphabet
+        self.__stocks.append(stock(stockName, stockNum))
         return
  
     #Stocks need to be in alphabetical order 
     #This function inserts them in such an order
     #Also insert stock into database
-    def newStock(self, stockName, stockNum):
+    def __newStock(self, stockName, stockNum):
         #Adding to array of objects
-        self.stockArrAdd(stockName,stockNum)
+        self.__stockArrAdd(stockName,stockNum)
 
         #Adding to database
         with sqlite3.connect("finance.db") as con:
-
             cursor = con.cursor()
             cursor.execute("INSERT INTO portfolio (symbol,shares) VALUES(?,?)", (stockName,stockNum,))
-
         return
 
     #If user already owns the stock then just add to the databasr
     #Modify stock array to have the correct data
-    def addStock(self, stockIndex, stockNum):
+    def __addStock(self, stockIndex, stockNum):
         #Getting the stock object
         existingStock = self.__stocks[stockIndex]
         oldShares = existingStock.getShares()
         newShares = oldShares + stockNum
         existingStock.setShares(newShares)
         print(existingStock.getShares())
+        symb = existingStock.getSymbol()
 
         #Add DB UPDATE Statement
+        with sqlite3.connect("finance.db") as con:
+            cursor = con.cursor()
+            #Currently writing this on the train so I havent checked that this is how you actually write an uodate statement
+            cursor.execute("UPDATE portfolio SET shares = shares + ? WHERE symbol = ?", (stockNum, symb,))
         return
 
     #If the user sells all of a stock delete the object from the array of objects
     #Also delete from database
-    def removeStock(self, stockName):
+    def __removeStock(self, stockName):
         #TODO
         pass
 
     #Get value of whole portfolio
-    def totalVal(self):
+    def __totalVal(self):
         #TODO
         pass
 
@@ -374,7 +373,6 @@ def load():
                 cursor.execute(f"CREATE UNIQUE INDEX symbol ON {tableName} (symbol);")
 
                 # Create text file to seperately store the balance as putting it in a database is too clumsy for one user
-                
                 #FR 16
                 with open("balance.txt","w") as f:
                     balance = "1000"
@@ -405,7 +403,6 @@ def load():
         sys.exit()
 
 def main():
-
     # Call load function
     balance, stockArray = load()
     #Create a portfolio class variable
