@@ -82,7 +82,7 @@ class portfolio():
         
         #Checking the user has enough money
         if not self.__validateOrder("buy", num, price):
-            print(f"{num} shares of {buyObj} costs {price * num}")
+            print(f"{num} shares of {buyObj} costs $8{price * num}")
             return
         
         #Checking the user wants to buy it for that much
@@ -106,7 +106,7 @@ class portfolio():
         else:
             self.__addStock(owned,num)
 
-        print(f"Successfully purchased {num} share(s) of {buyObj} for {total}")
+        print(f"Successfully purchased {num} share(s) of {buyObj} for ${total}")
         return
         
     #Selling a stock logic
@@ -152,7 +152,7 @@ class portfolio():
             print("More stock than owned stock somehow?")
             return
 
-        print(f"Successfully sold {num} share(s) of {sellObj} for {total}")        
+        print(f"Successfully sold {num} share(s) of {sellObj} for ${total}")        
         
         return
     
@@ -169,19 +169,40 @@ class portfolio():
 
         return newVal
 
-    def __validateNum(self, num, option):
-        try:
-            num = int(num)
-        except:
-            print("Please enter a valid integer number")
-            num = 0
-        
-        while num < 1:
+    def __validateNum(self, num, *option):
+        #Want to reuse the function but not just for stocks
+        # Checks if a buy/sell was passed in
+        #Flag for sketch
+        if option:
+
             try:
-                num = int(input(f"Enter the number of stocks you'd like to {option}: "))
+                num = int(num)
             except:
                 print("Please enter a valid integer number")
                 num = 0
+
+            while num < 1:
+                print("Please enter a valid integer number")
+                try:
+                    num = int(input(f"Enter the number of stocks you'd like to {option[0]}: "))
+                except:
+                    num = 0
+        else:
+            try:
+                num = float(num)
+                flag = False
+            except:
+                flag = True
+            
+            while flag:
+                try:
+                    num = float(input("Enter the amount of money you want to add: "))
+                    
+                except:
+                    print("Please enter a valid number")
+
+                else:
+                    flag = False
 
         return num
 
@@ -193,7 +214,7 @@ class portfolio():
         if opt == "buy":
             if self.__balance < arg * num:
                 print("Insufficient cash balance")
-                print(f"You have {self.__balance}")
+                print(f"You have ${self.__balance}")
                 return False
             else:
                 return True
@@ -222,7 +243,7 @@ class portfolio():
         yesOpt = ["","yes","y", "\n"]
         noOpt = ["no","n"]
         print(f"Confirm {opt} order for {shareNum} shares of {obj} for ${shareNum * price}?")
-        print(f"Your balance is {self.__balance}")
+        print(f"Your balance is ${self.__balance}")
         if opt == "sell":
             print(f"You own {arg[0]} shares of {obj}")
         option = input("Y/n: ")
@@ -258,14 +279,17 @@ class portfolio():
 
     #Adding to balance
     def addBal(self):
-        #TODO
-        pass
+        extra = input("Enter the amount of money you want to add: ")
+        extra = self.__validateNum(extra)
+        self.__balance = round(self.__balance + extra, 2)
+        self.__writeBal()
+        print(f"New balance of ${self.__balance}")
+        return
 
     #View balance
-    def viewBal(self):
-        #TODO
-        pass
-
+    def getBal(self):
+        return self.__balance
+    
     # View transaction history
     def viewTrans(self):
         #TODO
@@ -358,6 +382,7 @@ class portfolio():
         del self.__stocks[stockIndex]
 
         #Deleting from DB
+        #FR 12
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
             cursor.execute("DELETE FROM portfolio WHERE symbol = ?", (stockName, ))
@@ -472,7 +497,7 @@ def load():
                 with open("balance.txt","r") as f:
                     balance = float(f.read())
                 
-                print(f"Welcome back, your balance is {balance}")
+                print(f"Welcome back, your balance is ${balance}")
                 #Add a thing that gets total portfolio value 
 
         return balance, stockArr
@@ -499,7 +524,8 @@ def main():
                 #not quite sure what that will actually do yet
                 searchObj = input("Enter stock symbol: ")
                 price = get_price(searchObj)
-                print(f"{searchObj} is trading at {price} a share")
+                if price != None:
+                    print(f"{searchObj} is trading at ${price} a share")
 
             case 2: 
                 #Going into the buy menu
@@ -524,7 +550,8 @@ def main():
             
             case 7:
                 #Viewing balance
-                portf.viewBal()
+                curBal = portf.getBal()
+                print(f"Your balance is currently ${curBal}")
             
             case 8:
                 #Exiting the program
