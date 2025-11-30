@@ -51,7 +51,6 @@ class stock():
 #Include all functions in uml class diagram
 #Just make the functions that arent methods private
 class portfolio():
-
     def __init__(self, stocks, balance):
         self.__stocks = stocks
         self.__balance = balance
@@ -90,10 +89,9 @@ class portfolio():
 
     #Buying a stock logic
     def __buy(self, buyObj, num, price):
-        
         #Checking the user has enough money
         if not self.__validateOrder("buy", num, price):
-            print(f"{num} shares of {buyObj} costs $8{price * num}")
+            print(f"{num} shares of {buyObj} costs ${price * num}")
             return
         
         #Checking the user wants to buy it for that much
@@ -148,7 +146,6 @@ class portfolio():
 
             #Updating DB
             with sqlite3.connect("finance.db") as con:
-
                 cursor = con.cursor()
                 cursor.execute("UPDATE portfolio SET shares = ? WHERE symbol = ?;", (new, sellObj,))
         
@@ -171,7 +168,6 @@ class portfolio():
     def __sanitise(self, val):
         newVal = ""
         for char in val:
-
             if char.isdigit():
                 newVal += char
             else:
@@ -185,7 +181,6 @@ class portfolio():
         # Checks if a buy/sell was passed in
         #Flag for sketch
         if option:
-
             try:
                 num = int(num)
             except:
@@ -284,12 +279,31 @@ class portfolio():
     #View portfolio
     def viewPortfolio(self):
         priceArr,valueArr = self.__totalVal()
+        optDict ={
+            1: "desc",
+            2: "asc",
+            3: "maxShare",
+            4: "minShare",
+            5: "maxVal",
+            6: "minVal",
+        }
 
         while True:
-            self.__portfolioQuery(0,priceArr, valueArr)
-            break
+            self.__queryMenu()
+            try:
+                option = int(input("What would you like to sort by?: "))
+            except:
+                print("Please enter a valid number")
+                option = 0
+            opt = validateMenu(option,1,10, self.__queryMenu)
+            if opt == 10:
+                break
+            opt = optDict[opt]
+            result = self.__dbQuery(opt,priceArr, valueArr)
+            print(result)
+            print(f"Current portfolio valuation is ${sum(valueArr)} not including balance")
+            print(f"Current balance is ${self.__balance}")
         
-
     #Function to manage sorts
     #Sort by ASC
     #Sort by DESC
@@ -301,7 +315,8 @@ class portfolio():
     #Search for certain stocks
     #Search for most recently purchased
     #Maybe search for day of purchase
-    def __portfolioQuery(self, sortOpt, priceArr, assetValuation, *args):
+
+    def __dbQuery(self, sortOpt, priceArr, assetValuation):
         #May not be allowed
         #Flag this
         #Will add functionality to do stuff related to time
@@ -309,49 +324,90 @@ class portfolio():
         output.field_names = ["Symbol","Shares","Price Per Share","Valuation"]
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
-            #Make this more efficient
+            queryDict = self.__queryDict(sortOpt, assetValuation)
 
-            if sortOpt == "desc":
-                #Sort DESC
-                resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol DESC;")
-                for i,row in enumerate(resp):
-                    output.add_row([row[0],row[1], priceArr[-i], round(assetValuation[-i],2)])
-                return
-            
-            else:
-                resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;")
+            match sortOpt:
+                case "desc":
+                    #Sort DESC
+                    resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol DESC;")
+                    for i,row in enumerate(resp):
+                        output.add_row([row[0],row[1], priceArr[-(i+1)], round(assetValuation[-(i+1)],2)])
+                
+                case "asc":
+                    #Sort ASC
+                    resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;")
+                    for i,row in enumerate(resp):
+                        output.add_row([row[0],row[1], priceArr[i], round(assetValuation[i],2)])
+                    
+                case "maxShare":
+                    #Sort by most shares
+                    resp = cursor.execute("SELECT symbol,shares FROM portfolio ORDER BY shares DESC;")
+                    for i,row in enumerate(resp):
+                        output.add_row([row[0], row[1], round(assetValuation[queryDict[row[0]]] / row[1], 2), round(assetValuation[queryDict[row[0]]],2)])
 
-            #Sort ASC
-            if sortOpt == "asc":
-                for i,row in enumerate(resp):
-                    output.add_row([row[0],row[1], priceArr[i], round(assetValuation[i],2)])
-                return       
-            
-            #Create dict of object and their valuations
-            #Sort the dict
-            assetDict = {}
-            #https://stackoverflow.com/questions/613183/how-do-i-sort-a-dictionary-by-value
-            for i, obj in enumerate(self.__stocks):
-                assetDict[assetValuation[i]] = obj
+                case "minShare":
+                    #Sort by least shares
+                    resp = cursor.execute("SELECT symbol,shares FROM portfolio ORDER BY shares ASC;")
+                    for i,row in enumerate(resp):
+                        output.add_row([row[0], row[1], round(assetValuation[queryDict[row[0]]] / row[1], 2), round(assetValuation[queryDict[row[0]]],2)])
+                
+                #Sort by highest valuation
+                case "maxVal":
+                    for i,item in enumerate(queryDict):
+                        output.add_row([item[1].getSymbol(), item[1].getShares(),round(item[0] / item[1].getShares(),2), round(item[0],2)])
 
-            sortedList = sorted(assetDict.items(), key=lambda x: x[0], reverse=True)
-            print(sortedList)
+                #Sort by lowest valuation
+                #Exact same code as for max
+                #Might factor out somehow later
+                case "minVal":
+                    for i,item in enumerate(queryDict):
+                        output.add_row([item[1].getSymbol(), item[1].getShares(),round(item[0] / item[1].getShares(),2), round(item[0],2)])
 
+            return output
 
-        print(f"Current portfolio valuation is ${sum(assetValuation)} not including balance")
-        print(f"Current balance is ${self.__balance}")
+    #Create dict of object and their valuations
+    #Sort the dict
+    #Flag this
+    #https://stackoverflow.com/questions/613183/how-do-i-sort-a-dictionary-by-value   
+    def __queryDict(self, sortOpt, assetValuation):
+        outDict = {}
         
+        if sortOpt in ["maxShare", "minShare"]:
+            #We love python one liners
+            #Flag this
+            #Should probably simplify
+            outDict = {key:value for value,key in [(i,obj.getSymbol()) for i,obj in enumerate(self.__stocks)]}
+            return outDict
+    
+        elif sortOpt in ["maxVal", "minVal"]:
+            for i, obj in enumerate(self.__stocks):
+                outDict[assetValuation[i]] = obj
+                
+            #Most expensive
+            if sortOpt == "maxVal":
+                sortedList = sorted(outDict.items(), key=lambda x: x[0], reverse=True)
+
+            #Least expensive
+            else:
+                sortedList = sorted(outDict.items(), key=lambda x: x[0])
+
+            return sortedList
+    
+        #Will return an empty dictionary if the applicable options arent selected
+        return outDict
 
     def __queryMenu(self):
         print("""
-              1. Stock symbol ascending
-              2. Stock symbol descending
-              3. Most valuable assets
-              4. Least valuable assets
-              5. Most recently purchased
-              6. Oldest purchased
-              7. Search for certain stock
-              8. Exit
+              1. Stock symbol descending
+              2. Stock symbol ascending
+              3. Most stock owned
+              4. Least stock owned
+              5. Most valuable assets
+              6. Least valuable assets
+              7. Most recently purchased (Non functional)
+              8. Oldest purchased (Non functional)
+              9. Search for certain stock (Non functional)
+              10. Exit
               """)
 
     #Adding to balance
@@ -479,6 +535,7 @@ class portfolio():
             
             priceArr = get_price(symbols)
 
+            #In alphabetical order
             return priceArr, [(sharesOwned[i] * priceArr[i]) for i in range(len(priceArr))]
         
         else:
@@ -497,7 +554,8 @@ def get_price(symbol):
             symbol = symbol.upper()
         except:
             #Not returning because maybe it has numbers and is still valid
-            print("Error in capatlising symbol")
+            #Will return error when passing in the list of stock symbols
+            print("Potential error when capitalising, can ignore")
 
     #Getting the latest trade request for that stock
     #And therefore getting current price
@@ -527,7 +585,6 @@ def get_price(symbol):
         except:
             print("Invalid stock symbol")
             return None
-
 #FR 5
 def load():
     stockArr = []
@@ -536,7 +593,6 @@ def load():
     try:
         # Connect to databse and set connection variable to con, using with so it closes autmatically
         with sqlite3.connect("finance.db") as con:
-  
             tableName = "portfolio"
             cursor = con.cursor()
 
@@ -576,7 +632,6 @@ def load():
                 print(f"We have initialised your account, your starting balance is {balance}")
 
             else:
-                
                 #Read in data from the database
                 #The order by is to ensure the stocks are in alphabetical order
                 for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
@@ -648,7 +703,6 @@ def main():
                 #Exiting the program
                 sys.exit()
 
-
 # Displaying the options menu when needed
 def dispMenu():
     print("""  
@@ -662,11 +716,10 @@ def dispMenu():
             8. Exit
               """)
 
-def validateMenu(option, upper, lower):
-
+def validateMenu(option, lower, upper, func):
     while option > upper or option < lower:
         print(f"Please enter a number from {lower} to {upper}")
-        dispMenu()
+        func()
         try:
             option = int(input("Enter an option: "))
         except:
@@ -675,10 +728,8 @@ def validateMenu(option, upper, lower):
 
     return option
 
-def navigation():
-    
+def navigation(): 
     dispMenu()
-    
     try:
         option = int(input("Enter an option: "))
     except:
@@ -686,7 +737,7 @@ def navigation():
         option = 0
     
     #Hard coded values not great ik
-    option = validateMenu(option, 8, 1)
+    option = validateMenu(option, 1, 8, dispMenu)
 
     return option
 
