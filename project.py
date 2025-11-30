@@ -84,7 +84,7 @@ class portfolio():
             with sqlite3.connect("finance.db") as con:
                 cursor = con.cursor()
                 opt = opt.upper()
-                cursor.execute("INSERT INTO transactions (symbol, purchase_price, type, time, shares) VALUES (?,?,?,DATETIME(), ?);", (stock,cost,opt,num,))
+                cursor.execute("INSERT INTO transactions (symbol, purchase_price, type, time, shares) VALUES (?,?,?,DATETIME(), ?);", (stock,round(cost, 2), 4,opt,num,))
         
         return
 
@@ -463,14 +463,14 @@ class portfolio():
 
     def __portMenu(self):
         print("""
-        1. Stock symbol descending
-        2. Stock symbol ascending
-        3. Most stock owned
-        4. Least stock owned
-        5. Most valuable assets
-        6. Least valuable assets
-        7. Search for certain stock
-        8. Exit
+    1. Stock symbol descending
+    2. Stock symbol ascending
+    3. Most stock owned
+    4. Least stock owned
+    5. Most valuable assets
+    6. Least valuable assets
+    7. Search for certain stock
+    8. Exit
               """)
         
     # View transaction history
@@ -489,6 +489,7 @@ class portfolio():
             4: "cheapest",
             5: "maxVol",
             6: "minVol",
+            7: "date",
             8: "transStock",
         }
         
@@ -534,23 +535,23 @@ class portfolio():
 
     def __transTypeMenu(self):
         print("""
-        1. Buy
-        2. Sell
-        3. All
-        4. Exit
+    1. Buy
+    2. Sell
+    3. All
+    4. Exit
         """)
     
     def __transMenu(self):
         print("""
-        1. Most recent 
-        2. Oldest
-        3. Most expensive
-        4. Least expensive
-        5. Greatest volume
-        6. Smallest volume
-        7. Specific date (Non functional)
-        8. Specific stock
-        9. Exit
+    1. Most recent 
+    2. Oldest
+    3. Most expensive
+    4. Least expensive
+    5. Greatest volume
+    6. Smallest volume
+    7. Specific date (Non functional)
+    8. Specific stock
+    9. Exit
               """)
 
     #Adding to balance
