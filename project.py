@@ -3,6 +3,9 @@
 import sqlite3
 import sys
 import os
+#May not be allowed
+#Flag prettytables  
+from prettytable import PrettyTable
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockLatestTradeRequest
 from dotenv import load_dotenv
@@ -205,10 +208,8 @@ class portfolio():
             while flag:
                 try:
                     num = float(input("Enter the amount of money you want to add: "))
-                    
                 except:
                     print("Please enter a valid number")
-
                 else:
                     flag = False
 
@@ -282,8 +283,76 @@ class portfolio():
 
     #View portfolio
     def viewPortfolio(self):
-        #TODO
-        pass
+        priceArr,valueArr = self.__totalVal()
+
+        while True:
+            self.__portfolioQuery(0,priceArr, valueArr)
+            break
+        
+
+    #Function to manage sorts
+    #Sort by ASC
+    #Sort by DESC
+    #Sort by most expensive 
+    #Least expensive
+    #Most shares
+    #Least shares
+    ####
+    #Search for certain stocks
+    #Search for most recently purchased
+    #Maybe search for day of purchase
+    def __portfolioQuery(self, sortOpt, priceArr, assetValuation, *args):
+        #May not be allowed
+        #Flag this
+        #Will add functionality to do stuff related to time
+        output = PrettyTable()
+        output.field_names = ["Symbol","Shares","Price Per Share","Valuation"]
+        with sqlite3.connect("finance.db") as con:
+            cursor = con.cursor()
+            #Make this more efficient
+
+            if sortOpt == "desc":
+                #Sort DESC
+                resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol DESC;")
+                for i,row in enumerate(resp):
+                    output.add_row([row[0],row[1], priceArr[-i], round(assetValuation[-i],2)])
+                return
+            
+            else:
+                resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;")
+
+            #Sort ASC
+            if sortOpt == "asc":
+                for i,row in enumerate(resp):
+                    output.add_row([row[0],row[1], priceArr[i], round(assetValuation[i],2)])
+                return       
+            
+            #Create dict of object and their valuations
+            #Sort the dict
+            assetDict = {}
+            #https://stackoverflow.com/questions/613183/how-do-i-sort-a-dictionary-by-value
+            for i, obj in enumerate(self.__stocks):
+                assetDict[assetValuation[i]] = obj
+
+            sortedList = sorted(assetDict.items(), key=lambda x: x[0], reverse=True)
+            print(sortedList)
+
+
+        print(f"Current portfolio valuation is ${sum(assetValuation)} not including balance")
+        print(f"Current balance is ${self.__balance}")
+        
+
+    def __queryMenu(self):
+        print("""
+              1. Stock symbol ascending
+              2. Stock symbol descending
+              3. Most valuable assets
+              4. Least valuable assets
+              5. Most recently purchased
+              6. Oldest purchased
+              7. Search for certain stock
+              8. Exit
+              """)
 
     #Adding to balance
     def addBal(self):
@@ -398,9 +467,22 @@ class portfolio():
         return
 
     #Get value of whole portfolio
+    #Refactor
+    #Flag this
     def __totalVal(self):
-        #TODO
-        pass
+        if len(self.__stocks) > 0:
+            symbols = []
+            sharesOwned = []
+            for asset in self.__stocks:
+                symbols.append(asset.getSymbol())
+                sharesOwned.append(asset.getShares())
+            
+            priceArr = get_price(symbols)
+
+            return priceArr, [(sharesOwned[i] * priceArr[i]) for i in range(len(priceArr))]
+        
+        else:
+            return 0,[]
 
 #Taken from stackoverflow
 #Flag this
@@ -495,10 +577,11 @@ def load():
 
             else:
                 
-                #Read in data from the data"base
+                #Read in data from the database
                 #The order by is to ensure the stocks are in alphabetical order
                 for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
                     stockArr.append(stock(row[0],row[1]))
+                    print(row)
 
                 #Load in balance
                 #FR16
@@ -546,7 +629,7 @@ def main():
             case 4:
                 #Just viewing your portfolio
                 #Will probably have the function format the DB output in a table or sum
-                portf.viewTrans()
+                portf.viewPortfolio()
 
             case 5:
                 #Viewing your transaction history
@@ -579,10 +662,10 @@ def dispMenu():
             8. Exit
               """)
 
-def validateMenu(option):
+def validateMenu(option, upper, lower):
 
-    while option > 8 or option < 1:
-        print("Please enter a number from 1 to 8")
+    while option > upper or option < lower:
+        print(f"Please enter a number from {lower} to {upper}")
         dispMenu()
         try:
             option = int(input("Enter an option: "))
@@ -602,7 +685,8 @@ def navigation():
         print("Please enter a valid number")
         option = 0
     
-    option = validateMenu(option)
+    #Hard coded values not great ik
+    option = validateMenu(option, 8, 1)
 
     return option
 
