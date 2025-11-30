@@ -69,10 +69,10 @@ class portfolio():
         stock = self.__sanitise(stock)
 
         if opt == "sell":
-            self.__sell(stock,num, cost)
+            success = self.__sell(stock,num, cost)
         
         elif opt == "buy":
-            self.__buy(stock,num, cost)
+            success = self.__buy(stock,num, cost)
 
         else:
             #May remove later
@@ -80,10 +80,11 @@ class portfolio():
             print("Incorrect function call")
             sys.exit()
 
-        with sqlite3.connect("finance.db") as con:
-            cursor = con.cursor()
-            opt = opt.upper()
-            cursor.execute("INSERT INTO transactions (symbol, purchase_price, type, time, shares) VALUES (?,?,?,DATETIME(), ?);", (stock,cost,opt,num,))
+        if success:
+            with sqlite3.connect("finance.db") as con:
+                cursor = con.cursor()
+                opt = opt.upper()
+                cursor.execute("INSERT INTO transactions (symbol, purchase_price, type, time, shares) VALUES (?,?,?,DATETIME(), ?);", (stock,cost,opt,num,))
         
         return
 
@@ -92,11 +93,11 @@ class portfolio():
         #Checking the user has enough money
         if not self.__validateOrder("buy", num, price):
             print(f"{num} shares of {buyObj} costs ${price * num}")
-            return
+            return False
         
         #Checking the user wants to buy it for that much
         if not self.__confirmOrder("buy", price, num, buyObj):
-            return
+            return False
         
         #Balance logic, database stuff and array of ojects start now
         #Update Balance
@@ -116,7 +117,7 @@ class portfolio():
             self.__addStock(owned,num)
 
         print(f"Successfully purchased {num} share(s) of {buyObj} for ${total}")
-        return
+        return True
         
     #Selling a stock logic
     def __sell(self, sellObj, num, price):
@@ -124,14 +125,14 @@ class portfolio():
         #Checking if the user has enough stock
         flag,index = self.__validateOrder("sell", num, sellObj)
         if not flag:
-            return
+            return False
 
         #Checking how much stock the user has
         ownedStock = self.__stocks[index].getShares()
 
         #Confirming the purchase
         if not self.__confirmOrder("sell", price, num, sellObj, ownedStock):
-            return
+            return False
 
         #Balance logic and DB logic
         total = price * num
@@ -158,14 +159,15 @@ class portfolio():
         #Flag this
         else:
             print("More stock than owned stock somehow?")
-            return
+            return False
 
         print(f"Successfully sold {num} share(s) of {sellObj} for ${total}")        
         
-        return
+        return True
     
     #normalising the stock input for database indexing
     def __sanitise(self, val):
+        val = val.rstrip()
         newVal = ""
         for char in val:
             if char.isdigit():
@@ -279,6 +281,8 @@ class portfolio():
     #View portfolio
     def viewPortfolio(self):
         priceArr,valueArr = self.__totalVal()
+
+        #Need to add a few
         optDict ={
             1: "desc",
             2: "asc",
@@ -286,20 +290,34 @@ class portfolio():
             4: "minShare",
             5: "maxVal",
             6: "minVal",
+            7: "portfStock"
         }
 
         while True:
-            self.__queryMenu()
+            self.__portMenu()
             try:
                 option = int(input("What would you like to sort by?: "))
             except:
                 print("Please enter a valid number")
                 option = 0
-            opt = validateMenu(option,1,10, self.__queryMenu)
-            if opt == 10:
+
+            upper = 8
+            opt = validateMenu(option,1,upper, self.__portMenu)
+            if opt == upper:
                 break
             opt = optDict[opt]
-            result = self.__dbQuery(opt,priceArr, valueArr)
+            
+            if opt == "portfStock":
+                searchObj = input("Enter stock to search for: ")
+                searchObj = self.__sanitise(searchObj)
+                owned = self.__checkStock(searchObj)
+                if owned == -1:
+                    print("Stock not found")
+                    break
+                result = self.__dbQuery("portf", opt,priceArr, valueArr, owned)
+            else:
+                result = self.__dbQuery("portf", opt,priceArr, valueArr)
+
             print(result)
             print(f"Current portfolio valuation is ${sum(valueArr)} not including balance")
             print(f"Current balance is ${self.__balance}")
@@ -316,17 +334,25 @@ class portfolio():
     #Search for most recently purchased
     #Maybe search for day of purchase
 
-    def __dbQuery(self, sortOpt, priceArr, assetValuation):
+    def __dbQuery(self, caller, sortOpt, *args):
         #May not be allowed
         #Flag this
         #Will add functionality to do stuff related to time
         output = PrettyTable()
-        output.field_names = ["Symbol","Shares","Price Per Share","Valuation"]
+        #If portfolio call
+        if caller == "portf":
+            priceArr = args[0]
+            assetValuation = args[1]
+            output.field_names = ["Symbol","Shares","Price Per Share","Valuation"]
+            queryDict = self.__queryDict(sortOpt, assetValuation)
+        # If transaction table call
+        else:
+            output.field_names = ["Symbol","Purchase Price", "Type", "Time of Purchase", "Shares", "Total Value"]
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
-            queryDict = self.__queryDict(sortOpt, assetValuation)
 
             match sortOpt:
+                #Queries used by the portfolio method
                 case "desc":
                     #Sort DESC
                     resp = cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol DESC;")
@@ -362,6 +388,45 @@ class portfolio():
                 case "minVal":
                     for i,item in enumerate(queryDict):
                         output.add_row([item[1].getSymbol(), item[1].getShares(),round(item[0] / item[1].getShares(),2), round(item[0],2)])
+                
+                case "portfStock":
+                    output.add_row([self.__stocks[args[2]].getSymbol(), self.__stocks[args[2]].getShares(), round(priceArr[args[2]], 2), round(assetValuation[args[2]], 2)])
+
+                #Queries used by the transaction method
+                case "recent":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id DESC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+                
+                case "oldest":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+
+                case "expensive":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY (shares*purchase_price) DESC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+                
+                case "cheapest":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+                
+                case "maxVol":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares DESC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+                
+                case "minVol":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares ASC;", (args[0]))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
+                
+                case "transStock":
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? AND symbol = ? ORDER BY sale_id DESC;", (args[0], args[1],))
+                    for row in resp:
+                        output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
 
             return output
 
@@ -396,7 +461,7 @@ class portfolio():
         #Will return an empty dictionary if the applicable options arent selected
         return outDict
 
-    def __queryMenu(self):
+    def __portMenu(self):
         print("""
               1. Stock symbol descending
               2. Stock symbol ascending
@@ -404,10 +469,88 @@ class portfolio():
               4. Least stock owned
               5. Most valuable assets
               6. Least valuable assets
-              7. Most recently purchased (Non functional)
-              8. Oldest purchased (Non functional)
-              9. Search for certain stock (Non functional)
-              10. Exit
+              7. Search for certain stock
+              8. Exit
+              """)
+        
+    # View transaction history
+    def viewTrans(self):
+        typeDict = {
+            1: "buy",
+            2: "sell",
+            3: "%",
+        }
+
+        #Need 7 (maybe)
+        optDict = {
+            1: "recent",
+            2: "oldest",
+            3: "expensive",
+            4: "cheapest",
+            5: "maxVol",
+            6: "minVol",
+            8: "transStock",
+        }
+        
+        while True:
+            self.__transTypeMenu()
+            try:
+                option = int(input("What type of transaction do you want to search?: "))
+            except:
+                print("Please enter a valid number")
+                option = 0
+            upper = 4
+            transType = validateMenu(option, 1, upper, self.__transTypeMenu)
+
+            if transType == upper:
+                break
+            transType = typeDict[transType]
+
+            self.__transMenu()
+            try:
+                option = int(input("What would you like to sort by?: "))
+            except:
+                print("Please enter a valid number")
+                option = 0
+            upper = 9
+            opt = validateMenu(option, 1, upper, self.__transMenu)
+            if opt == upper:
+                break
+
+            opt = optDict[opt]
+            
+            if opt == "transStock":
+                searchObj = input("Enter stock to search for: ")
+                searchObj = self.__sanitise(searchObj)
+                owned = self.__checkStock(searchObj)
+                if owned == -1:
+                    print("Stock not found")
+                    break
+                result = self.__dbQuery("trans", opt, transType, searchObj)
+            else:
+                result = self.__dbQuery("trans", opt, transType)
+
+            print(result)
+
+    def __transTypeMenu(self):
+        print("""
+                1. Buy
+                2. Sell
+                3. All
+                4. Exit
+              """)
+    
+    def __transMenu(self):
+        print("""
+                1. Most recent 
+                2. Oldest
+                3. Most expensive
+                4. Least expensive
+                5. Greatest volume
+                6. Smallest volume
+                7. Specific date (Non functional)
+                8. Specific stock
+                9. Exit
               """)
 
     #Adding to balance
@@ -422,11 +565,6 @@ class portfolio():
     #View balance
     def getBal(self):
         return self.__balance
-    
-    # View transaction history
-    def viewTrans(self):
-        #TODO
-        pass
 
     #Binary search on the array of objects to check if I already own a stock
     #FR 3
