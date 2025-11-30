@@ -394,32 +394,32 @@ class portfolio():
 
                 #Queries used by the transaction method
                 case "recent":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id DESC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id DESC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
                 
                 case "oldest":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
 
                 case "expensive":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY (shares*purchase_price) DESC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY (shares*purchase_price) DESC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
                 
                 case "cheapest":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
                 
                 case "maxVol":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares DESC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares DESC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
                 
                 case "minVol":
-                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares ASC;", (args[0]))
+                    resp = cursor.execute("SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY shares ASC;", (args[0],))
                     for row in resp:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
                 
@@ -463,14 +463,14 @@ class portfolio():
 
     def __portMenu(self):
         print("""
-              1. Stock symbol descending
-              2. Stock symbol ascending
-              3. Most stock owned
-              4. Least stock owned
-              5. Most valuable assets
-              6. Least valuable assets
-              7. Search for certain stock
-              8. Exit
+        1. Stock symbol descending
+        2. Stock symbol ascending
+        3. Most stock owned
+        4. Least stock owned
+        5. Most valuable assets
+        6. Least valuable assets
+        7. Search for certain stock
+        8. Exit
               """)
         
     # View transaction history
@@ -534,23 +534,23 @@ class portfolio():
 
     def __transTypeMenu(self):
         print("""
-                1. Buy
-                2. Sell
-                3. All
-                4. Exit
-              """)
+        1. Buy
+        2. Sell
+        3. All
+        4. Exit
+        """)
     
     def __transMenu(self):
         print("""
-                1. Most recent 
-                2. Oldest
-                3. Most expensive
-                4. Least expensive
-                5. Greatest volume
-                6. Smallest volume
-                7. Specific date (Non functional)
-                8. Specific stock
-                9. Exit
+        1. Most recent 
+        2. Oldest
+        3. Most expensive
+        4. Least expensive
+        5. Greatest volume
+        6. Smallest volume
+        7. Specific date (Non functional)
+        8. Specific stock
+        9. Exit
               """)
 
     #Adding to balance
@@ -774,7 +774,6 @@ def load():
                 #The order by is to ensure the stocks are in alphabetical order
                 for row in cursor.execute("SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"):
                     stockArr.append(stock(row[0],row[1]))
-                    print(row)
 
                 #Load in balance
                 #FR16
@@ -844,14 +843,14 @@ def main():
 # Displaying the options menu when needed
 def dispMenu():
     print("""  
-            1. Check Stock Price
-            2. Buy
-            3. Sell
-            4. View portfolio
-            5. View transactions
-            6. Add to balance
-            7. View balance
-            8. Exit
+    1. Check Stock Price
+    2. Buy
+    3. Sell
+    4. View portfolio
+    5. View transactions
+    6. Add to balance
+    7. View balance
+    8. Exit
               """)
 
 def validateMenu(option, lower, upper, func):
