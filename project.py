@@ -36,19 +36,6 @@ class stock:
     def setShares(self, newVal):
         self.__shares = newVal
 
-    # Other methods
-    # May remove later
-    # Flag this
-    def getPrice(self):
-        # Make the api call for the current price
-        pass
-
-    # May remove later
-    def getTotal(self):
-        totalVal = self.__shares * self.getPrice(self)
-        return totalVal
-
-
 # FR 1
 # Defining the portfolio class which will have all of the DB methods
 # Include all functions in uml class diagram
@@ -351,10 +338,8 @@ class portfolio:
     # Least expensive
     # Most shares
     # Least shares
-    ####
     # Search for certain stocks
     # Search for most recently purchased
-    # Maybe search for day of purchase
 
     def __dbQuery(self, caller, sortOpt, *args):
         # May not be allowed
@@ -380,6 +365,7 @@ class portfolio:
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
 
+            #FR 6
             match sortOpt:
                 # Queries used by the portfolio method
                 case "desc":
@@ -599,8 +585,7 @@ class portfolio:
             4: "cheapest",
             5: "maxVol",
             6: "minVol",
-            7: "date",
-            8: "transStock",
+            7: "transStock",
         }
 
         while True:
@@ -623,7 +608,7 @@ class portfolio:
             except:
                 print("Please enter a valid number")
                 option = 0
-            upper = 9
+            upper = 8
             opt = validateMenu(option, 1, upper, self.__transMenu)
             if opt == upper:
                 break
@@ -659,9 +644,8 @@ class portfolio:
     4. Least expensive
     5. Greatest volume
     6. Smallest volume
-    7. Specific date (Non functional)
-    8. Specific stock
-    9. Exit
+    7. Specific stock
+    8. Exit
               """)
 
     # Adding to balance
@@ -912,6 +896,7 @@ def load():
             else:
                 # Read in data from the database
                 # The order by is to ensure the stocks are in alphabetical order
+                #FR 6
                 for row in cursor.execute(
                     "SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"
                 ):
@@ -1023,7 +1008,6 @@ def navigation():
     option = validateMenu(option, 1, 8, dispMenu)
 
     return option
-
 
 if __name__ == "__main__":
     main()
