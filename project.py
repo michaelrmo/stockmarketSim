@@ -164,7 +164,7 @@ class portfolio:
             print("More stock than owned stock somehow?")
             return False
 
-        print(f"Successfully sold {num} share(s) of {sellObj} for ${total}")
+        print(f"Successfully sold {num} share(s) of {sellObj} for ${round(total,2)}")
 
         return True
 
@@ -254,7 +254,7 @@ class portfolio:
         yesOpt = ["", "yes", "y", "\n"]
         noOpt = ["no", "n"]
         print(
-            f"Confirm {opt} order for {shareNum} shares of {obj} for ${shareNum * price}?"
+            f"Confirm {opt} order for {shareNum} shares of {obj} for ${round(shareNum * price,2)}?"
         )
         print(f"Your balance is ${self.__balance}")
         if opt == "sell":
@@ -327,7 +327,7 @@ class portfolio:
 
             print(result)
             print(
-                f"Current portfolio valuation is ${sum(valueArr)} not including balance"
+                f"Current portfolio valuation is ${round(sum(valueArr),2)} not including balance"
             )
             print(f"Current balance is ${self.__balance}")
 
@@ -362,6 +362,8 @@ class portfolio:
                 "Shares",
                 "Total Value",
             ]
+
+        #Make all of this pseudocode
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
 
@@ -486,7 +488,9 @@ class portfolio:
 
                 case "cheapest":
                     resp = cursor.execute(
-                        "SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY sale_id ASC;",
+                        # Potential error
+                        # Logic error me thinks, should be shares*purchase_price
+                        "SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY (shares*purchase_price) ASC;",
                         (args[0],),
                     )
                     for row in resp:
@@ -760,7 +764,7 @@ class portfolio:
         del self.__stocks[stockIndex]
 
         # Deleting from DB
-        # FR 12
+        # FR 12 
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
             cursor.execute("DELETE FROM portfolio WHERE symbol = ?", (stockName,))
