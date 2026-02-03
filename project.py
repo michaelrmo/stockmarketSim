@@ -1,4 +1,4 @@
-# Stock Market Simulator
+    # Stock Market Simulator
 # imports
 import sqlite3
 import sys
@@ -71,6 +71,7 @@ class portfolio:
             sys.exit()
 
         if success:
+            # FR 13
             with sqlite3.connect("finance.db") as con:
                 cursor = con.cursor()
                 opt = opt.upper()
@@ -143,6 +144,7 @@ class portfolio:
             self.__stocks[index].setShares(new)
 
             # Updating DB
+            # FR 9
             with sqlite3.connect("finance.db") as con:
                 cursor = con.cursor()
                 cursor.execute(
@@ -599,7 +601,7 @@ class portfolio:
             except:
                 print("Please enter a valid number")
                 option = 0
-            upper = 4
+            upper = len(typeDict) + 1
             transType = validateMenu(option, 1, upper, self.__transTypeMenu)
 
             if transType == upper:
@@ -723,6 +725,7 @@ class portfolio:
         self.__stockArrAdd(stockName, stockNum)
 
         # Adding to database
+        # FR 13
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
             cursor.execute(
@@ -745,6 +748,7 @@ class portfolio:
         symb = existingStock.getSymbol()
 
         # Add DB UPDATE Statement
+        # FR 9
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
             # Currently writing this on the train so I havent checked that this is how you actually write an uodate statement
@@ -808,9 +812,9 @@ def get_price(symbol):
         except:
             # Not returning because maybe it has numbers and is still valid
             # Will return error when passing in the list of stock symbols
-            print("Potential error when capitalising, can ignore")
+            print("Capitalising error, if used in sort ignore")
 
-    # Getting the latest trade request for that stock
+    # Getting the latest trade request for that stock, or list of stocks
     # And therefore getting current price
     try:
         request = StockLatestTradeRequest(symbol_or_symbols=symbol)
@@ -823,21 +827,23 @@ def get_price(symbol):
     if type(symbol) is list:
         try:
             priceArr = [response[thing].price for thing in symbol]
-            return priceArr
         # This shouldn't be reached technically?
         # The list is only passed in when calculating total portfolio value
         # And isnt triggered by the user
         except:
             print("Invalid stock symbol")
             return None
+        
+        return priceArr
     # If its one stock then just return that stock price as a float
     else:
         try:
             stockPrice = response[symbol].price
-            return stockPrice
         except:
             print("Invalid stock symbol")
             return None
+        
+        return stockPrice
 
 
 # FR 5
