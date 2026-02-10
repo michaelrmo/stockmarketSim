@@ -37,9 +37,6 @@ class stock:
         self.__shares = newVal
 
 # FR 1
-# Defining the portfolio class which will have all of the DB methods
-# Include all functions in uml class diagram
-# Just make the functions that arent methods private
 class portfolio:
     def __init__(self, stocks, balance):
         self.__stocks = stocks
@@ -63,12 +60,6 @@ class portfolio:
 
         elif opt == "buy":
             success = self.__buy(stock, num, cost)
-
-        else:
-            # May remove later
-            # Flag this
-            print("Incorrect function call")
-            sys.exit()
 
         if success:
             # FR 13
@@ -98,7 +89,7 @@ class portfolio:
         if not self.__confirmOrder("buy", price, num, buyObj):
             return False
 
-        # Balance logic, database stuff and array of ojects start now
+        # Balance logic, database stuff and array of objects start now
         # Update Balance
         total = price * num
         self.__balance = round(self.__balance - total, 2)
@@ -157,15 +148,10 @@ class portfolio:
 
         # If equal to stock owned
         # Need to delete stock obj
-        # And delete databse entry
+        # And delete database entry
         elif num == ownedStock:
             self.__removeStock(sellObj, index)
-
-        # Flag this
-        else:
-            print("More stock than owned stock somehow?")
-            return False
-
+    
         print(f"Successfully sold {num} share(s) of {sellObj} for ${round(total,2)}")
 
         return True
@@ -186,7 +172,6 @@ class portfolio:
     def __validateNum(self, num, *option):
         # Want to reuse the function but not just for stocks
         # Checks if a buy/sell was passed in
-        # Flag for sketch
         if option:
             try:
                 num = int(num)
@@ -291,7 +276,6 @@ class portfolio:
     def viewPortfolio(self):
         priceArr, valueArr = self.__totalVal()
 
-        # Need to add a few
         optDict = {
             1: "desc",
             2: "asc",
@@ -303,7 +287,7 @@ class portfolio:
         }
 
         while True:
-            self.__portMenu()
+            self.__portMenu()    
             try:
                 option = int(input("What would you like to sort by?: "))
             except:
@@ -334,19 +318,8 @@ class portfolio:
             print(f"Current balance is ${self.__balance}")
 
     # Function to manage sorts
-    # Sort by ASC
-    # Sort by DESC
-    # Sort by most expensive
-    # Least expensive
-    # Most shares
-    # Least shares
-    # Search for certain stocks
-    # Search for most recently purchased
 
     def __dbQuery(self, caller, sortOpt, *args):
-        # May not be allowed
-        # Flag this
-        # Will add functionality to do stuff related to time
         output = PrettyTable()
         # If portfolio call
         if caller == "portf":
@@ -365,7 +338,6 @@ class portfolio:
                 "Total Value",
             ]
 
-        #Make all of this pseudocode
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
 
@@ -489,9 +461,7 @@ class portfolio:
                         output.add_row([row[0], row[1], row[2], row[3], row[4], row[5]])
 
                 case "cheapest":
-                    resp = cursor.execute(
-                        # Potential error
-                        # Logic error me thinks, should be shares*purchase_price
+                    resp = cursor.execute(  
                         "SELECT symbol,purchase_price,type,time,shares,shares*purchase_price FROM transactions WHERE type LIKE ? ORDER BY (shares*purchase_price) ASC;",
                         (args[0],),
                     )
@@ -529,14 +499,12 @@ class portfolio:
 
     # Create dict of object and their valuations
     # Sort the dict
-    # Flag this
     # https://stackoverflow.com/questions/613183/how-do-i-sort-a-dictionary-by-value
     def __queryDict(self, sortOpt, assetValuation):
         outDict = {}
 
         if sortOpt in ["maxShare", "minShare"]:
             # We love python one liners
-            # Flag this
             # Should probably simplify
             outDict = {
                 key: value
@@ -583,7 +551,6 @@ class portfolio:
             3: "%",
         }
 
-        # Need 7 (maybe)
         optDict = {
             1: "recent",
             2: "oldest",
@@ -717,9 +684,7 @@ class portfolio:
         self.__stocks.append(stock(stockName, stockNum))
         return
 
-    # Stocks need to be in alphabetical order
-    # This function inserts them in such an order
-    # Also insert stock into database
+    # Insert stock into database
     def __newStock(self, stockName, stockNum):
         # Adding to array of objects
         self.__stockArrAdd(stockName, stockNum)
@@ -737,7 +702,7 @@ class portfolio:
             )
         return
 
-    # If user already owns the stock then just add to the databasr
+    # If user already owns the stock then just add to the database
     # Modify stock array to have the correct data
     def __addStock(self, stockIndex, stockNum):
         # Getting the stock object
@@ -751,7 +716,6 @@ class portfolio:
         # FR 9
         with sqlite3.connect("finance.db") as con:
             cursor = con.cursor()
-            # Currently writing this on the train so I havent checked that this is how you actually write an uodate statement
             cursor.execute(
                 "UPDATE portfolio SET shares = shares + ? WHERE symbol = ?;",
                 (
@@ -776,8 +740,6 @@ class portfolio:
         return
 
     # Get value of whole portfolio
-    # Refactor
-    # Flag this
     def __totalVal(self):
         if len(self.__stocks) > 0:
             symbols = []
@@ -798,7 +760,6 @@ class portfolio:
 
 
 # Taken from stackoverflow
-# Flag this
 def has_numbers(inputString):
     return any(char.isdigit() for char in inputString)
 
@@ -806,12 +767,11 @@ def has_numbers(inputString):
 # FR 10
 # Only 200 API calls per minute, may lead to issues potentially?
 def get_price(symbol):
-    if not has_numbers(symbol):
+    if not has_numbers(symbol) and type(symbol) is not list:
         try:
             symbol = symbol.upper()
         except:
             # Not returning because maybe it has numbers and is still valid
-            # Will return error when passing in the list of stock symbols
             print("Capitalising error, if used in sort ignore")
 
     # Getting the latest trade request for that stock, or list of stocks
@@ -869,7 +829,6 @@ def load():
 
                 # Creating Portfolio database to store stocks
                 # Table name isn't a global var and if i change it here the functions in my portfolio object will break
-                # Flag this
                 cursor.execute(
                     f"CREATE TABLE {tableName} ("
                     "stock_id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -892,7 +851,7 @@ def load():
                 cursor.execute(f"CREATE UNIQUE INDEX symbol ON {tableName} (symbol);")
 
                 # Create text file to seperately store the balance as putting it in a database is too clumsy for one user
-                # FR 16
+                # FR 15 
                 with open("balance.txt", "w") as f:
                     balance = "1000"
                     f.write(balance)
@@ -913,12 +872,11 @@ def load():
                     stockArr.append(stock(row[0], row[1]))
 
                 # Load in balance
-                # FR16
+                # FR 15
                 with open("balance.txt", "r") as f:
                     balance = float(f.read())
 
                 print(f"Welcome back, your balance is ${balance}")
-                # Add a thing that gets total portfolio value
 
         return balance, stockArr
 
@@ -945,7 +903,7 @@ def main():
                 # not quite sure what that will actually do yet
                 searchObj = input("Enter stock symbol: ")
                 price = get_price(searchObj)
-                if price != None:
+                if price is not None:
                     print(f"{searchObj} is trading at ${price} a share")
 
             case 2:
@@ -1015,6 +973,7 @@ def navigation():
         option = 0
 
     # Hard coded values not great ik
+    #FR 8
     option = validateMenu(option, 1, 8, dispMenu)
 
     return option
