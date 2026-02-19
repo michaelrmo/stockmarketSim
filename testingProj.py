@@ -637,6 +637,7 @@ class portfolio:
     # Binary search on the array of objects to check if I already own a stock
     # FR 3
     def __checkStock(self, searchObj):
+        
         low = 0
         high = len(self.__stocks) - 1
 
@@ -652,6 +653,7 @@ class portfolio:
                 high = mid - 1
             else:
                 return mid
+
         return -1
 
     # Writing balance to text file
@@ -870,6 +872,7 @@ def load():
                     "SELECT symbol, shares FROM portfolio ORDER BY symbol ASC;"
                 ):
                     stockArr.append(stock(row[0], row[1]))
+                    
 
                 # Load in balance
                 # FR 15
@@ -889,6 +892,7 @@ def load():
 def main():
     # Call load function
     balance, stockArray = load()
+        
     # Create a portfolio class variable
     portf = portfolio(stockArray, balance)
 
@@ -900,7 +904,6 @@ def main():
         match choice:
             case 1:
                 # Check Stock Price
-                # not quite sure what that will actually do yet
                 searchObj = input("Enter stock symbol: ")
                 price = get_price(searchObj)
                 if price is not None:
@@ -916,7 +919,6 @@ def main():
 
             case 4:
                 # Just viewing your portfolio
-                # Will probably have the function format the DB output in a table or sum
                 portf.viewPortfolio()
 
             case 5:
